@@ -1,0 +1,17 @@
+<svg width="256" height="256" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#0EA5E9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Cloud -->
+  <path d="M20 40h24a8 8 0 0 0 0-16 12 12 0 0 0-22-4A10 10 0 0 0 20 40z"
+        fill="url(#grad)"/>
+
+  <!-- Rain bars (like financial bars) -->
+  <rect x="26" y="42" width="3" height="8" fill="#1E3A8A"/>
+  <rect x="31" y="45" width="3" height="5" fill="#1E3A8A"/>
+  <rect x="36" y="43" width="3" height="7" fill="#1E3A8A"/>
+</svg>
