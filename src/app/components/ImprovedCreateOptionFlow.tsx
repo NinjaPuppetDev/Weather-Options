@@ -12,7 +12,6 @@ import {
   CreateOptionParams,
 } from '../lib/contract';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
   cream:      '#f4ede0',
   green:      '#1c2b1e',
@@ -37,15 +36,39 @@ const T = {
   warnText:   '#78350f',
 };
 
-// ─── Dynamic style functions (standalone — avoids Record<string,CSSProperties> conflicts) ──
+const RESPONSIVE = `
+  @keyframes spin { to { transform: rotate(360deg); } }
+  input:focus { border-color: ${T.amber} !important; }
+
+  .cof-body { padding: 2.5rem; }
+  .cof-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2.25rem; }
+  .cof-loc-grid  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+  .cof-coord-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .cof-param-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 2.25rem; }
+  .cof-payout-bar { padding: 1.5rem 2rem; background: ${T.green}; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .cof-vault-banner { padding: 1.25rem 1.5rem; margin-bottom: 2.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+  .cof-review-row { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid ${T.border}; }
+  .cof-review-row-last { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0 0; }
+  .cof-btn-row { display: flex; gap: 0.75rem; }
+
+  @media (max-width: 640px) {
+    .cof-body { padding: 1.25rem; }
+    .cof-type-grid { grid-template-columns: 1fr; }
+    .cof-loc-grid  { grid-template-columns: 1fr 1fr; }
+    .cof-coord-grid { grid-template-columns: 1fr; }
+    .cof-param-grid { grid-template-columns: 1fr; }
+    .cof-payout-bar { flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1.25rem; }
+    .cof-vault-banner { flex-direction: column; align-items: flex-start; }
+    .cof-review-row { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+    .cof-review-row-last { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+    .cof-btn-row { flex-direction: column; }
+  }
+`;
+
 function sVaultBanner(ok: boolean): CSSProperties {
   return {
-    padding: '1.25rem 1.5rem',
     background: ok ? T.successBg : T.errorBg,
     border: `1px solid ${ok ? T.successBorder : T.errorBorder}`,
-    marginBottom: '2.25rem',
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    flexWrap: 'wrap', gap: '0.75rem',
   };
 }
 function sTypeCard(active: boolean, accent: string): CSSProperties {
@@ -109,8 +132,6 @@ function sConfirmBtn(disabled: boolean): CSSProperties {
   };
 }
 
-
-// ─── Static style objects ─────────────────────────────────────────────────────
 const css: Record<string, CSSProperties> = {
   wrap: {
     fontFamily: "'Cormorant Garamond', Georgia, serif",
@@ -122,9 +143,8 @@ const css: Record<string, CSSProperties> = {
     height: 3,
     background: `linear-gradient(90deg, ${T.amber}, ${T.greenMid})`,
   },
-  body: { padding: '2.5rem' },
   pageTitle: {
-    fontSize: 'clamp(1.75rem, 3vw, 2.5rem)',
+    fontSize: 'clamp(1.5rem, 3vw, 2.5rem)',
     fontWeight: 400,
     color: T.green,
     letterSpacing: '-0.01em',
@@ -152,11 +172,9 @@ const css: Record<string, CSSProperties> = {
     color: T.textMuted, fontFamily: "'DM Mono', monospace",
   },
   vaultValue: { fontSize: '1.3rem', fontWeight: 500, color: T.green, fontFamily: "'DM Mono', monospace" },
-  typeGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2.25rem' },
   typeIcon: { fontSize: '2rem', marginBottom: '0.75rem', display: 'block' },
   typeTitle: { fontSize: '1.2rem', fontWeight: 600, color: T.green, marginBottom: '0.25rem' },
   typeDesc: { fontSize: '0.82rem', color: T.textMuted },
-  locGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1rem' },
   locIcon: { fontSize: '1.6rem', marginBottom: '0.4rem', display: 'block' },
   locName: { fontSize: '0.95rem', fontWeight: 600, color: T.green, marginBottom: '0.2rem' },
   locCoord: { fontSize: '0.7rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" },
@@ -165,19 +183,13 @@ const css: Record<string, CSSProperties> = {
     fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase',
     color: T.amber, marginBottom: '1rem', fontFamily: "'DM Mono', monospace",
   },
-  coordGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' },
   inputLabel: {
     display: 'block', fontSize: '0.72rem', letterSpacing: '0.15em', textTransform: 'uppercase',
     color: T.textMuted, marginBottom: '0.4rem', fontFamily: "'DM Mono', monospace",
   },
   selectedCoord: { fontSize: '0.82rem', color: T.textMuted, marginTop: '0.75rem' },
   selectedCoordVal: { fontFamily: "'DM Mono', monospace", fontWeight: 600, color: T.green },
-  paramGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '2.25rem' },
   paramField: {},
-  payoutBar: {
-    padding: '1.5rem 2rem', background: T.green,
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem',
-  },
   payoutLabel: {
     fontSize: '0.82rem', letterSpacing: '0.18em', textTransform: 'uppercase',
     color: 'rgba(244,237,224,0.6)', fontFamily: "'DM Mono', monospace",
@@ -186,7 +198,6 @@ const css: Record<string, CSSProperties> = {
   alertTitle: { fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' },
   alertBody:  { fontSize: '0.82rem', lineHeight: 1.6 },
   monoSmall:  { fontFamily: "'DM Mono', monospace", fontSize: '0.72rem', wordBreak: 'break-all' },
-  // Review step
   reviewCard: {
     padding: '1.75rem',
     background: T.white,
@@ -194,18 +205,9 @@ const css: Record<string, CSSProperties> = {
     borderBottom: `3px solid ${T.amber}`,
     marginBottom: '1.5rem',
   },
-  reviewRow: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '0.6rem 0', borderBottom: `1px solid ${T.border}`,
-  },
-  reviewRowLast: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '0.75rem 0 0',
-  },
   reviewLabel: { fontSize: '0.88rem', color: T.textMuted },
   reviewValue: { fontFamily: "'DM Mono', monospace", fontSize: '0.95rem', color: T.green },
   reviewTotal: { fontSize: '1.4rem', fontWeight: 500, color: T.green },
-  btnRow:   { display: 'flex', gap: '0.75rem' },
   cancelBtn: {
     flex: 1, padding: '1rem',
     background: 'transparent', color: T.green,
@@ -213,7 +215,6 @@ const css: Record<string, CSSProperties> = {
     fontSize: '0.82rem', letterSpacing: '0.18em', textTransform: 'uppercase' as const,
     cursor: 'pointer', fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 600,
   },
-  // Loading / center states
   center: {
     padding: '5rem 2.5rem',
     textAlign: 'center' as const,
@@ -229,7 +230,6 @@ const css: Record<string, CSSProperties> = {
   },
   centerTitle: { fontSize: '1.75rem', fontWeight: 400, color: T.green, marginBottom: '0.5rem' },
   centerSub:   { fontSize: '0.9rem', color: T.textMuted, marginBottom: '1.5rem' },
-  // Success
   successWrap: {
     padding: '5rem 2.5rem',
     textAlign: 'center' as const,
@@ -241,7 +241,6 @@ const css: Record<string, CSSProperties> = {
   successSub:   { fontSize: '0.9rem', color: T.textMuted, marginBottom: '1rem' },
 };
 
-// ─── Types & Constants (unchanged) ───────────────────────────────────────────
 type Step = 'form' | 'quote-loading' | 'review' | 'creating' | 'success';
 
 type FormState = {
@@ -299,11 +298,9 @@ const LOCATIONS = [
 ];
 
 const TIME_BUFFER = 600;
-
 const isValidLat = (lat: string) => { const n = Number(lat); return !isNaN(n) && n >= -90  && n <= 90;  };
 const isValidLon = (lon: string) => { const n = Number(lon); return !isNaN(n) && n >= -180 && n <= 180; };
 
-// ─── useQuote hook (logic unchanged) ─────────────────────────────────────────
 function useQuote(
   form: FormState,
   address: `0x${string}` | undefined,
@@ -399,14 +396,8 @@ function useQuote(
   return { request, isLoading, isFulfilled, premium, requestId, error, txHash, simulationResult, reset };
 }
 
-// ─── Small shared UI pieces ───────────────────────────────────────────────────
 function Spinner({ color = T.amber }: { color?: string }) {
-  return (
-    <>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ ...css.spinnerRing, borderTopColor: color }} />
-    </>
-  );
+  return <div style={{ ...css.spinnerRing, borderTopColor: color }} />;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -417,7 +408,6 @@ function Divider() {
   return <div style={css.divider} />;
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
 export default function ImprovedCreateOptionFlow() {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
@@ -438,26 +428,22 @@ export default function ImprovedCreateOptionFlow() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const quote = useQuote(form, address, publicClient);
 
-  // ── Contract reads ──
   const { data: vaultLiquidity } = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'availableLiquidity', query: { enabled: mounted } });
   const { data: minNotional }    = useReadContract({ address: CONTRACTS.WEATHER_OPTION, abi: WEATHER_OPTION_ABI, functionName: 'minNotional',    query: { enabled: mounted } });
   const { data: minPremium }     = useReadContract({ address: CONTRACTS.WEATHER_OPTION, abi: WEATHER_OPTION_ABI, functionName: 'minPremium',     query: { enabled: mounted } });
   const { data: protocolFeeBps } = useReadContract({ address: CONTRACTS.WEATHER_OPTION, abi: WEATHER_OPTION_ABI, functionName: 'protocolFeeBps', query: { enabled: mounted } });
 
-  // ── Derived values ──
   const maxPayout   = useMemo(() => parseEther(form.notional) * BigInt(form.spread), [form.notional, form.spread]);
   const protocolFee = useMemo(() => quote.premium && protocolFeeBps ? (quote.premium as bigint) * (protocolFeeBps as bigint) / BigInt(10000) : BigInt(0), [quote.premium, protocolFeeBps]);
   const totalCost   = useMemo(() => quote.premium ? (quote.premium as bigint) + protocolFee : BigInt(0), [quote.premium, protocolFee]);
   const isPremiumValid = useMemo(() => quote.premium !== undefined && minPremium !== undefined ? (quote.premium as bigint) >= (minPremium as bigint) : true, [quote.premium, minPremium]);
 
-  // ── Write: create option ──
   const { writeContract: createOption, data: createHash, error: createError, isPending: isCreatePending } = useWriteContract();
   const { isSuccess: isCreateSuccess } = useWaitForTransactionReceipt({ hash: createHash });
 
-  // ── State sync effects (logic unchanged) ──
   useEffect(() => {
-    if (quote.isLoading)                                    dispatch({ type: 'SET_STEP', payload: 'quote-loading' });
-    else if (quote.error)                                   { dispatch({ type: 'SET_ERROR', payload: quote.error }); dispatch({ type: 'SET_STEP', payload: 'form' }); }
+    if (quote.isLoading)                                       dispatch({ type: 'SET_STEP', payload: 'quote-loading' });
+    else if (quote.error)                                      { dispatch({ type: 'SET_ERROR', payload: quote.error }); dispatch({ type: 'SET_STEP', payload: 'form' }); }
     else if (quote.isFulfilled && quote.premium !== undefined) { dispatch({ type: 'SET_STEP', payload: 'review' }); dispatch({ type: 'SET_REQUEST_ID', payload: quote.requestId }); }
   }, [quote.isLoading, quote.error, quote.isFulfilled, quote.premium, quote.requestId]);
 
@@ -483,7 +469,6 @@ export default function ImprovedCreateOptionFlow() {
 
   useEffect(() => setMounted(true), []);
 
-  // ── Handlers ──
   const handleRequestQuote = useCallback(() => {
     if (form.isCustomLocation) {
       if (!form.customLat || !form.customLon) { dispatch({ type: 'SET_ERROR', payload: 'Please enter both latitude and longitude.' }); return; }
@@ -509,10 +494,10 @@ export default function ImprovedCreateOptionFlow() {
 
   if (!mounted) return null;
 
-  // ── Not connected ──
   if (!isConnected) {
     return (
       <div style={{ ...css.wrap, padding: '5rem 2.5rem', textAlign: 'center' }}>
+        <style>{RESPONSIVE}</style>
         <div style={css.topBar} />
         <div style={{ padding: '4rem 2rem', fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
           <div style={{ fontSize: '3rem', marginBottom: '1.25rem' }}>🌦</div>
@@ -523,9 +508,6 @@ export default function ImprovedCreateOptionFlow() {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // FORM STEP
-  // ─────────────────────────────────────────────────────────────────────────────
   if (state.step === 'form' || state.step === 'quote-loading') {
     const selectedCoord = form.isCustomLocation
       ? form.customLat && form.customLon ? `${form.customLat}°, ${form.customLon}°` : '—'
@@ -533,16 +515,14 @@ export default function ImprovedCreateOptionFlow() {
 
     return (
       <div style={css.wrap}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } } input:focus { border-color: ${T.amber} !important; }`}</style>
+        <style>{RESPONSIVE}</style>
         <div style={css.topBar} />
 
         {state.step === 'quote-loading' ? (
-          // ── Loading overlay ──
           <div style={css.center}>
             <Spinner />
             <h2 style={css.centerTitle}>Calculating your premium</h2>
             <p style={css.centerSub}>Chainlink is analysing historical rainfall data for your coordinates.</p>
-
             {quote.requestId ? (
               <div style={sAlertBox('success')}>
                 <p style={{ ...css.alertTitle, color: T.successText }}>Request ID confirmed</p>
@@ -559,26 +539,23 @@ export default function ImprovedCreateOptionFlow() {
             ) : (
               <p style={{ fontSize: '0.85rem', color: T.textMuted }}>Waiting for confirmation…</p>
             )}
-
             <button onClick={handleCancelQuote}
               style={{ marginTop: '1.5rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>
               Cancel
             </button>
           </div>
         ) : (
-          // ── Form body ──
-          <div style={css.body}>
+          <div className="cof-body">
             <h2 style={css.pageTitle}>Create weather protection</h2>
             <p style={css.pageSub}>Configure your option parameters below</p>
 
-            {/* Vault liquidity */}
             {vaultLiquidity && (
-              <div style={sVaultBanner(!!hasEnoughLiquidity)}>
+              <div className="cof-vault-banner" style={sVaultBanner(!!hasEnoughLiquidity)}>
                 <div>
                   <span style={css.vaultLabel}>Vault available liquidity</span>
                   <div style={css.vaultValue}>{formatEther(vaultLiquidity as bigint)} ETH</div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
+                <div>
                   <span style={css.vaultLabel}>Your option needs</span>
                   <div style={{ ...css.vaultValue, color: hasEnoughLiquidity ? T.successText : T.errorText }}>
                     {formatEther(maxPayout)} ETH
@@ -592,9 +569,8 @@ export default function ImprovedCreateOptionFlow() {
               </div>
             )}
 
-            {/* Option type */}
             <SectionLabel>Protection type</SectionLabel>
-            <div style={css.typeGrid}>
+            <div className="cof-type-grid">
               {([
                 { t: OptionType.CALL, icon: '🌧', title: 'Call',  desc: 'Payout when rainfall exceeds strike',     accent: T.green },
                 { t: OptionType.PUT,  icon: '☀️', title: 'Put',   desc: 'Payout when rainfall falls below strike', accent: T.amber },
@@ -609,9 +585,8 @@ export default function ImprovedCreateOptionFlow() {
 
             <Divider />
 
-            {/* Location */}
             <SectionLabel>Location</SectionLabel>
-            <div style={css.locGrid}>
+            <div className="cof-loc-grid">
               {LOCATIONS.map((loc, idx) => (
                 <button key={idx} onClick={() => setForm({ ...form, locationIdx: idx, isCustomLocation: false })} style={sLocCard(!form.isCustomLocation && form.locationIdx === idx)}>
                   <span style={css.locIcon}>{loc.emoji}</span>
@@ -619,7 +594,6 @@ export default function ImprovedCreateOptionFlow() {
                   <div style={css.locCoord}>{loc.lat}°, {loc.lon}°</div>
                 </button>
               ))}
-              {/* Custom location */}
               <button onClick={() => setForm({ ...form, isCustomLocation: true })} style={sLocCard(form.isCustomLocation)}>
                 <span style={css.locIcon}>📍</span>
                 <div style={css.locName}>Custom</div>
@@ -630,7 +604,7 @@ export default function ImprovedCreateOptionFlow() {
             {form.isCustomLocation && (
               <div style={css.customPanel}>
                 <p style={css.customPanelTitle}>Manual coordinates</p>
-                <div style={css.coordGrid}>
+                <div className="cof-coord-grid">
                   <div>
                     <label style={css.inputLabel}>Latitude (−90 to 90)</label>
                     <input value={form.customLat} onChange={(e) => setForm({ ...form, customLat: e.target.value })}
@@ -646,17 +620,15 @@ export default function ImprovedCreateOptionFlow() {
             )}
 
             <p style={css.selectedCoord}>
-              Selected:{' '}
-              <span style={css.selectedCoordVal}>{selectedCoord}</span>
+              Selected: <span style={css.selectedCoordVal}>{selectedCoord}</span>
             </p>
 
             <Divider />
 
-            {/* Parameters */}
             <SectionLabel>Option parameters</SectionLabel>
-            <div style={css.paramGrid}>
+            <div className="cof-param-grid">
               {([
-                { field: 'days'   as const, label: 'Duration (days)', type: 'number', min: 1,  max: 30 },
+                { field: 'days'   as const, label: 'Duration (days)', type: 'number', min: 1, max: 30 },
                 { field: 'strike' as const, label: 'Strike (mm)',      type: 'number' },
                 { field: 'spread' as const, label: 'Spread (mm)',      type: 'number' },
               ]).map(({ field, label, type, min, max }) => (
@@ -673,13 +645,11 @@ export default function ImprovedCreateOptionFlow() {
               </div>
             </div>
 
-            {/* Max payout bar */}
-            <div style={css.payoutBar}>
+            <div className="cof-payout-bar">
               <span style={css.payoutLabel}>Maximum payout</span>
               <span style={css.payoutValue}>{formatEther(maxPayout)} ETH</span>
             </div>
 
-            {/* Alerts */}
             {state.error && (
               <div style={sAlertBox('error')}>
                 <p style={{ ...css.alertTitle, color: T.errorText }}>Error</p>
@@ -700,7 +670,6 @@ export default function ImprovedCreateOptionFlow() {
               </div>
             )}
 
-            {/* CTA */}
             <button onClick={handleRequestQuote} disabled={quote.isLoading || !hasEnoughLiquidity} style={sPrimaryBtn(quote.isLoading || !hasEnoughLiquidity)}>
               {quote.isLoading ? 'Requesting quote…' : 'Get weather quote →'}
             </button>
@@ -710,9 +679,6 @@ export default function ImprovedCreateOptionFlow() {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // REVIEW STEP
-  // ─────────────────────────────────────────────────────────────────────────────
   if (state.step === 'review' && quote.premium !== undefined) {
     const zeroPremiumMsg = (quote.premium as bigint) === BigInt(0)
       ? form.type === OptionType.CALL ? 'Strike above forecast (out of the money)' : 'Strike below forecast (out of the money)'
@@ -720,15 +686,15 @@ export default function ImprovedCreateOptionFlow() {
 
     return (
       <div style={css.wrap}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <style>{RESPONSIVE}</style>
         <div style={css.topBar} />
-        <div style={css.body}>
+        <div className="cof-body">
           <h2 style={css.pageTitle}>Review your option</h2>
           <p style={css.pageSub}>Confirm the terms before paying the premium</p>
 
           <SectionLabel>Premium breakdown</SectionLabel>
           <div style={css.reviewCard}>
-            <div style={css.reviewRow}>
+            <div className="cof-review-row">
               <span style={css.reviewLabel}>Premium</span>
               <span style={css.reviewValue}>
                 {formatEther(quote.premium as bigint)} ETH
@@ -737,11 +703,11 @@ export default function ImprovedCreateOptionFlow() {
                 )}
               </span>
             </div>
-            <div style={css.reviewRow}>
+            <div className="cof-review-row">
               <span style={css.reviewLabel}>Protocol fee (1%)</span>
               <span style={css.reviewValue}>{formatEther(protocolFee)} ETH</span>
             </div>
-            <div style={css.reviewRowLast}>
+            <div className="cof-review-row-last">
               <span style={{ fontWeight: 700, fontSize: '1rem', color: T.green }}>Total to pay</span>
               <span style={css.reviewTotal}>{formatEther(totalCost)} ETH</span>
             </div>
@@ -758,7 +724,7 @@ export default function ImprovedCreateOptionFlow() {
               ['Notional',   `${form.notional} ETH/mm`],
               ['Max payout', `${formatEther(maxPayout)} ETH`],
             ] as [string, string][]).map(([k, v], i, arr) => (
-              <div key={k} style={i < arr.length - 1 ? css.reviewRow : css.reviewRowLast}>
+              <div key={k} className={i < arr.length - 1 ? 'cof-review-row' : 'cof-review-row-last'}>
                 <span style={css.reviewLabel}>{k}</span>
                 <span style={css.reviewValue}>{v}</span>
               </div>
@@ -781,7 +747,7 @@ export default function ImprovedCreateOptionFlow() {
             </div>
           )}
 
-          <div style={css.btnRow}>
+          <div className="cof-btn-row">
             <button onClick={handleCancelQuote} style={css.cancelBtn}>← Back</button>
             <button onClick={handleCreateOption} disabled={isCreatePending || !isPremiumValid} style={sConfirmBtn(isCreatePending || !isPremiumValid)}>
               {isCreatePending ? 'Confirming…' : 'Confirm & pay →'}
@@ -792,13 +758,10 @@ export default function ImprovedCreateOptionFlow() {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // CREATING
-  // ─────────────────────────────────────────────────────────────────────────────
   if (state.step === 'creating') {
     return (
       <div style={css.wrap}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <style>{RESPONSIVE}</style>
         <div style={css.topBar} />
         <div style={css.center}>
           <Spinner color={T.green} />
@@ -809,12 +772,10 @@ export default function ImprovedCreateOptionFlow() {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // SUCCESS
-  // ─────────────────────────────────────────────────────────────────────────────
   if (state.step === 'success') {
     return (
       <div style={css.wrap}>
+        <style>{RESPONSIVE}</style>
         <div style={css.topBar} />
         <div style={css.successWrap}>
           <div style={css.successMark}>🌿</div>

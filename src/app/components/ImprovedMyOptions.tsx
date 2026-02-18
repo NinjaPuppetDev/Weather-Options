@@ -5,7 +5,6 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { formatEther } from 'viem';
 import { CONTRACTS, WEATHER_OPTION_ABI, OptionType } from '../lib/contract';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
   cream:        '#f4ede0',
   green:        '#1c2b1e',
@@ -28,7 +27,105 @@ const T = {
   warnText:     '#78350f',
 };
 
-// ─── Static styles ────────────────────────────────────────────────────────────
+const RESPONSIVE = `
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .mo-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: ${T.border};
+    margin-top: 1px;
+  }
+
+  .mo-card-header {
+    padding: 1.5rem 2rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+
+  .mo-timeline-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1rem;
+    align-items: center;
+    padding: 1.25rem;
+    background: ${T.white};
+    border: 1px solid ${T.border};
+    margin-bottom: 1rem;
+  }
+
+  .mo-btn-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+  }
+
+  .mo-expanded {
+    padding: 1.75rem 2rem;
+    border-top: 1px solid ${T.border};
+    background: ${T.cream};
+  }
+
+  .mo-payout-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  @media (max-width: 640px) {
+    .mo-stat-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .mo-card-header {
+      padding: 1.25rem;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .mo-card-header > div:last-child {
+      text-align: left !important;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .mo-timeline-grid {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+
+    .mo-timeline-arrow {
+      display: none;
+    }
+
+    .mo-btn-row {
+      flex-direction: column;
+    }
+
+    .mo-expanded {
+      padding: 1.25rem;
+    }
+
+    .mo-payout-bar {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .mo-stat-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+`;
+
 const css: Record<string, CSSProperties> = {
   root: { fontFamily: "'Cormorant Garamond', Georgia, serif", minHeight: '100vh' },
   topBar: { height: 3, background: `linear-gradient(90deg, ${T.amber}, ${T.greenMid})` },
@@ -43,26 +140,17 @@ const css: Record<string, CSSProperties> = {
   label: { fontSize: '0.68rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: T.amber, fontFamily: "'DM Mono', monospace", display: 'block', marginBottom: '0.5rem' },
   divider: { height: 1, background: T.border },
   monoSmall: { fontFamily: "'DM Mono', monospace", fontSize: '0.72rem', wordBreak: 'break-all' },
-  // Card
   card: { background: T.white, border: `1px solid ${T.border}`, borderLeft: `3px solid ${T.border}`, marginBottom: '0.75rem', overflow: 'hidden', transition: 'border-left-color 0.2s' },
-  cardHeader: { padding: '1.5rem 2rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem' },
   cardNum: { fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: T.textMuted, fontFamily: "'DM Mono', monospace", marginBottom: '0.4rem' },
   cardTitle: { fontSize: '1.25rem', fontWeight: 500, color: T.green },
   badge: { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.75rem', fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: "'DM Mono', monospace", border: '1px solid', marginRight: '0.5rem' },
-  statGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: T.border, marginTop: '1px' },
   statCell: { background: T.white, padding: '1rem 1.25rem' },
   statLabel: { fontSize: '0.68rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: T.textMuted, fontFamily: "'DM Mono', monospace", marginBottom: '0.35rem' },
   statValue: { fontSize: '1.1rem', fontWeight: 500, color: T.green, fontFamily: "'DM Mono', monospace" },
-  // Expanded
-  expanded: { padding: '1.75rem 2rem', borderTop: `1px solid ${T.border}`, background: T.cream },
-  timelineGrid: { display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '1rem', alignItems: 'center', padding: '1.25rem', background: T.white, border: `1px solid ${T.border}`, marginBottom: '1rem' },
   timelineLabel: { fontSize: '0.68rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: T.textMuted, fontFamily: "'DM Mono', monospace", marginBottom: '0.3rem' },
   timelineValue: { fontSize: '0.9rem', color: T.green },
-  timelineArrow: { fontSize: '1.2rem', color: T.border, textAlign: 'center' },
   settlementBox: { padding: '1.25rem', background: T.successBg, border: `1px solid ${T.successBorder}`, marginBottom: '1rem' },
   debugBox: { padding: '1rem', background: T.amberLight, border: `1px solid ${T.amberBorder}`, marginTop: '1rem' },
-  // Buttons
-  btnRow: { display: 'flex', gap: '0.75rem', marginTop: '1.25rem' },
 };
 
 function actionBtnStyle(variant: 'primary' | 'amber' | 'disabled'): CSSProperties {
@@ -87,7 +175,6 @@ function badgeColor(status: number) {
   ][status] ?? { bg: T.cream, border: T.border, text: T.textMuted, label: 'Unknown' };
 }
 
-// ─── Types ─────────────────────────────────────────────────────────────────
 interface Option {
   tokenId: bigint;
   terms: {
@@ -111,7 +198,6 @@ interface Option {
   };
 }
 
-// ─── OptionCard ───────────────────────────────────────────────────────────────
 function OptionCard({
   tokenId, isExpanded, onToggle,
   onRequestSettlement, onSettle, onClaim,
@@ -143,8 +229,7 @@ function OptionCard({
 
   return (
     <div style={{ ...css.card, borderLeftColor: isExpanded ? T.amber : T.border }}>
-      {/* Card header row */}
-      <div style={css.cardHeader} onClick={onToggle}>
+      <div className="mo-card-header" onClick={onToggle}>
         <div style={{ flex: 1 }}>
           <div style={css.cardNum}>Option #{tokenId.toString()}</div>
           <div style={css.cardTitle}>{terms.latitude}°, {terms.longitude}°</div>
@@ -164,15 +249,16 @@ function OptionCard({
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <span style={css.label}>Max payout</span>
-          <div style={{ fontSize: '1.6rem', fontWeight: 400, color: T.green }}>{formatEther(maxPayout)} ETH</div>
-          <div style={{ fontSize: '0.72rem', color: T.textMuted, fontFamily: "'DM Mono', monospace", marginTop: '0.25rem' }}>
-            {isExpanded ? '↑ collapse' : '↓ expand'}
+          <div className="mo-payout-bar">
+            <div style={{ fontSize: '1.6rem', fontWeight: 400, color: T.green }}>{formatEther(maxPayout)} ETH</div>
+            <div style={{ fontSize: '0.72rem', color: T.textMuted, fontFamily: "'DM Mono', monospace", marginTop: '0.25rem', marginLeft: '0.5rem' }}>
+              {isExpanded ? '↑' : '↓'}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Quick stats */}
-      <div style={css.statGrid}>
+      <div className="mo-stat-grid">
         {[
           { label: 'Strike', value: `${terms.strikeMM.toString()} mm` },
           { label: 'Spread',  value: `${terms.spreadMM.toString()} mm` },
@@ -186,25 +272,21 @@ function OptionCard({
         ))}
       </div>
 
-      {/* Expanded section */}
       {isExpanded && (
-        <div style={css.expanded} onClick={(e) => e.stopPropagation()}>
-
-          {/* Coverage period */}
+        <div className="mo-expanded" onClick={(e) => e.stopPropagation()}>
           <span style={css.label}>Coverage period</span>
-          <div style={css.timelineGrid}>
+          <div className="mo-timeline-grid">
             <div>
               <div style={css.timelineLabel}>Start</div>
               <div style={css.timelineValue}>{new Date(Number(terms.startDate) * 1000).toLocaleString()}</div>
             </div>
-            <div style={css.timelineArrow}>→</div>
+            <div className="mo-timeline-arrow" style={{ fontSize: '1.2rem', color: T.border, textAlign: 'center' }}>→</div>
             <div>
               <div style={css.timelineLabel}>Expiry</div>
               <div style={css.timelineValue}>{new Date(Number(terms.expiryDate) * 1000).toLocaleString()}</div>
             </div>
           </div>
 
-          {/* Settlement result */}
           {state.actualRainfall > BigInt(0) && (
             <>
               <span style={{ ...css.label, marginTop: '1.25rem' }}>Settlement result</span>
@@ -225,9 +307,8 @@ function OptionCard({
             </>
           )}
 
-          {/* Actions */}
           {isExpired && state.status === 0 && (
-            <div style={css.btnRow}>
+            <div className="mo-btn-row">
               <button onClick={(e) => { e.stopPropagation(); onRequestSettlement(tokenId); }}
                 disabled={isSettling} style={actionBtnStyle(isSettling ? 'disabled' : 'amber')}>
                 {isSettling ? 'Requesting…' : '1 — Request settlement'}
@@ -253,7 +334,6 @@ function OptionCard({
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
 export default function MyOptions() {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
@@ -298,7 +378,7 @@ export default function MyOptions() {
   if (!isConnected) {
     return (
       <div style={css.center}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <style>{RESPONSIVE}</style>
         <div style={css.topBar} />
         <div style={{ fontSize: '3rem', marginBottom: '1.25rem' }}>🛡</div>
         <h2 style={css.centerTitle}>My Protection</h2>
@@ -310,7 +390,7 @@ export default function MyOptions() {
   if (isScanning) {
     return (
       <div style={css.center}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <style>{RESPONSIVE}</style>
         <div style={css.topBar} />
         <div style={css.spinnerRing} />
         <h2 style={css.centerTitle}>Scanning your options</h2>
@@ -322,7 +402,7 @@ export default function MyOptions() {
   if (scanComplete && userTokenIds.length === 0) {
     return (
       <div style={{ ...css.center, textAlign: 'left', padding: '2.5rem' }}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <style>{RESPONSIVE}</style>
         <div style={css.topBar} />
         <div style={{ padding: '2.5rem', textAlign: 'center' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📭</div>
@@ -333,8 +413,6 @@ export default function MyOptions() {
               : 'Create your first weather protection option to get started.'}
           </p>
         </div>
-
-        {/* Debug panel */}
         <div style={css.debugBox}>
           <span style={css.label}>Debug information</span>
           {[
@@ -343,9 +421,9 @@ export default function MyOptions() {
             ['Contract', CONTRACTS.WEATHER_OPTION],
             ['Tokens scanned', '0–49'],
           ].map(([k, v]) => (
-            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: `1px solid ${T.amberBorder}`, fontSize: '0.82rem' }}>
+            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: `1px solid ${T.amberBorder}`, fontSize: '0.82rem', flexWrap: 'wrap', gap: '0.25rem' }}>
               <span style={{ color: T.textMuted }}>{k}</span>
-              <span style={{ fontFamily: "'DM Mono', monospace", color: T.green, fontSize: '0.72rem' }}>{v}</span>
+              <span style={{ fontFamily: "'DM Mono', monospace", color: T.green, fontSize: '0.72rem', wordBreak: 'break-all' }}>{v}</span>
             </div>
           ))}
         </div>
@@ -355,8 +433,7 @@ export default function MyOptions() {
 
   return (
     <>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      {/* Page header */}
+      <style>{RESPONSIVE}</style>
       <div style={{ ...css.wrap, marginBottom: '1.5rem' }}>
         <div style={css.topBar} />
         <div style={css.header}>
@@ -366,7 +443,6 @@ export default function MyOptions() {
         </div>
       </div>
 
-      {/* Cards */}
       {userTokenIds.map((tokenId) => (
         <OptionCard
           key={tokenId.toString()}

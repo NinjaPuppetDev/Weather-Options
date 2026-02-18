@@ -48,41 +48,48 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Mono:wght@400;700&display=swap');
+              <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Mono:wght@400;700&display=swap');
 
-          /* ── RainbowKit button overrides ── */
-          [data-rk] button {
-            font-family: 'DM Mono', monospace !important;
-            font-size: 0.68rem !important;
-            letter-spacing: 0.18em !important;
-            text-transform: uppercase !important;
-            border-radius: 0 !important;
-          }
-          /* Connect button pill → sharp rectangle */
-          [data-rk] [data-testid="rk-connect-button"],
-          [data-rk] [data-testid="rk-account-button"] {
-            border: 1px solid rgba(28,43,30,0.10) !important;
-            background: #f4ede0 !important;
-            color: #1c2b1e !important;
-            box-shadow: none !important;
-          }
-          [data-rk] [data-testid="rk-connect-button"]:hover,
-          [data-rk] [data-testid="rk-account-button"]:hover {
-            background: #1c2b1e !important;
-            color: #f4ede0 !important;
-          }
-          /* Modal */
-          [data-rk] [role="dialog"] {
-            border-radius: 0 !important;
-            border: 1px solid rgba(28,43,30,0.10) !important;
-            box-shadow: 0 8px 32px rgba(28,43,30,0.12) !important;
-          }
-          /* Wallet option rows */
-          [data-rk] [data-testid="rk-wallet-option"] {
-            border-radius: 0 !important;
-          }
-        `}</style>
+      /* ── Connect / account button only — NOT modal internals ── */
+      [data-rk] [data-testid="rk-connect-button"],
+      [data-rk] [data-testid="rk-account-button"] {
+        font-family: 'DM Mono', monospace !important;
+        font-size: 0.68rem !important;
+        letter-spacing: 0.18em !important;
+        text-transform: uppercase !important;
+        border-radius: 0 !important;
+        border: 1px solid rgba(28,43,30,0.10) !important;
+        background: #f4ede0 !important;
+        color: #1c2b1e !important;
+        box-shadow: none !important;
+      }
+      [data-rk] [data-testid="rk-connect-button"]:hover,
+      [data-rk] [data-testid="rk-account-button"]:hover {
+        background: #1c2b1e !important;
+        color: #f4ede0 !important;
+      }
+
+      /* ── Modal internals — reset to normal, keep DM Mono ── */
+      [data-rk] [role="dialog"] button {
+        font-family: 'DM Mono', monospace !important;
+        letter-spacing: normal !important;
+        text-transform: none !important;
+        border-radius: 0 !important;
+      }
+
+      /* ── Modal shell ── */
+      [data-rk] [role="dialog"] {
+        border-radius: 0 !important;
+        border: 1px solid rgba(28,43,30,0.10) !important;
+        box-shadow: 0 8px 32px rgba(28,43,30,0.12) !important;
+      }
+
+      /* ── Wallet option rows ── */
+      [data-rk] [data-testid="rk-wallet-option"] {
+        border-radius: 0 !important;
+      }
+    `}</style>
       </head>
       <body>
         {mounted ? (
