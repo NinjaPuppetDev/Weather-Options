@@ -293,7 +293,6 @@ function reducer(state: AppState, action: Action): AppState {
 }
 
 const LOCATIONS = [
-  { name: 'Test Location', lat: '10.0',  lon: '-75.0',  emoji: '🧪' },
   { name: 'Medellín',      lat: '6.25',  lon: '-75.56', emoji: '🌸' },
   { name: 'London',        lat: '51.51', lon: '-0.13',  emoji: '☂️' },
   { name: 'Miami',         lat: '25.76', lon: '-80.19', emoji: '🌴' },

@@ -27,15 +27,14 @@ const navStyle: CSSProperties = {
   background: T.cream,
   borderBottom: `1px solid ${T.border}`,
   display: 'grid',
-  gridTemplateColumns: '1fr auto 1fr',
+  gridTemplateColumns: '1fr 1fr 1fr',   // equal thirds → logo is always centred
   alignItems: 'center',
   padding: '0 2.5rem',
   height: '60px',
-  gap: '3rem',
 };
 
 const tabBarStyle: CSSProperties = {
-  display: 'flex',
+  display: 'inline-flex',   // shrink-wrap the tabs, don't stretch to the full column
   gap: 0,
   alignItems: 'center',
   border: `1px solid ${T.border}`,
@@ -69,7 +68,7 @@ const logoStyle: CSSProperties = {
   textTransform: 'uppercase',
   color: T.green,
   userSelect: 'none',
-  textAlign: 'center',
+  textAlign: 'center',   // centred within its equal-width column
 };
 
 export default function Header({ activeTab, setActiveTab }: HeaderProps) {
@@ -78,16 +77,18 @@ export default function Header({ activeTab, setActiveTab }: HeaderProps) {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Mono:wght@400;700&display=swap');`}</style>
       <nav style={navStyle}>
         {/* Left — tabs */}
-        <div style={tabBarStyle}>
-          {TABS.map(({ key, label }, i) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              style={tabStyle(activeTab === key, i === TABS.length - 1)}
-            >
-              {label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={tabBarStyle}>
+            {TABS.map(({ key, label }, i) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                style={tabStyle(activeTab === key, i === TABS.length - 1)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Center — logo */}
