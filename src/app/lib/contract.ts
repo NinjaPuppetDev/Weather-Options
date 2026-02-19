@@ -3,10 +3,10 @@
 
 export const CONTRACTS = {
   // Weather Option V3 (Main contract)
-  WEATHER_OPTION: '0x3C97d44c502488AcF0Dfda5c691be3A264D84CE0' as const,
+  WEATHER_OPTION: '0x762a995182433fDE85dC850Fa8FF6107582110d2' as const,
   
   // Vault (Liquidity provider contract)
-  VAULT: '0x8E333D07F74FF9A45b0E3E0805a10d58fb61E72C' as const,
+  VAULT: '0x681915B4226014045665e4D5d6Bb348eB90cB32f' as const,
   
   // WETH (Wrapped ETH)
   WETH: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14' as const,

@@ -190,7 +190,10 @@ export default function Header({ activeTab, setActiveTab }: HeaderProps) {
           </div>
 
           {/* ── Center / left-on-mobile: logo ── */}
-          <span className="bruma-logo">Bruma Protocol</span>
+          <span className="bruma-logo"
+          onClick={() => setActiveTab('home')}
+          style={{ cursor: 'pointer' }}
+          >Bruma Protocol</span>
 
           {/* ── Right: wallet ── */}
           <div className="bruma-wallet">

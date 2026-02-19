@@ -143,7 +143,7 @@ const S: Record<string, CSSProperties> = {
   originImageText: { color: "rgba(244,237,224,0.4)", fontSize: "0.8rem", letterSpacing: "0.15em", textTransform: "uppercase" },
   problemSection: { background: "#1c2b1e" },
   statCard: { padding: "3rem 2.5rem", background: "rgba(244,237,224,0.04)", borderLeft: "1px solid rgba(244,237,224,0.06)" },
-  statNum: { fontSize: "clamp(2.2rem, 5vw, 4.5rem)", fontWeight: 300, color: "#c9913d", lineHeight: 1, marginBottom: "0.75rem", letterSpacing: "-0.02em" },
+  statNum: { fontSize: "clamp(2.2rem, 5vw, 4.5rem)", fontWeight: 300, color: "#c9913d", lineHeight: 1, marginBottom: "0.75rem", letterSpacing: "-0.02em", fontFamily: "'DM Mono', monospace", },
   statDesc: { fontSize: "0.95rem", color: "rgba(244,237,224,0.6)", lineHeight: 1.65 },
   howSection: { background: "#f4ede0", borderTop: "1px solid rgba(28,43,30,0.08)", borderBottom: "1px solid rgba(28,43,30,0.08)" },
   howTitle: { fontSize: "clamp(1.6rem, 4vw, 3.2rem)", fontWeight: 400, lineHeight: 1.15, maxWidth: "480px" },
@@ -300,7 +300,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
               <p style={S.originAttrib}>Bruma Pro · Built in Medellín, Colombia · 2026</p>
             </Reveal>
             <Reveal delay={0.2}>
-              <ImgPlaceholder label="the farm, the landscape, the story" aspect="4/5" />
+              <img src="/farmstory.png" alt="The farm, the landscape, the story" style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block" }} />
             </Reveal>
           </div>
         </section>
@@ -420,7 +420,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
                 <div style={{ fontSize: "1.2rem", color: "#f4ede0", fontWeight: 400 }}>Earn as a risk underwriter</div>
               </div>
               <p style={{ fontSize: "0.95rem", color: "rgba(244,237,224,0.55)", lineHeight: 1.75, maxWidth: "560px" }}>
-                Deposit WETH into the ERC-4626 vault to back weather options. Earn a share of every premium collected. The vault enforces an 80% maximum utilization rate and a 20% per-location exposure cap, keeping liquidity providers protected from correlated risk.
+                Deposit WETH into the ERC-4626 vault to back Bruma Protocol. Earn a share of every premium collected. The vault enforces an 80% maximum utilization rate and a 20% per-location exposure cap, keeping liquidity providers protected from correlated risk.
               </p>
             </div>
           </Reveal>
@@ -457,7 +457,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
           <Reveal delay={0.3}>
             <div style={{ maxWidth: "1100px", margin: "2.5rem auto 0", padding: "1.5rem 2rem", background: "white", border: "1px solid rgba(28,43,30,0.08)", display: "flex", gap: "3rem", alignItems: "center", flexWrap: "wrap" }}>
               <span style={{ fontSize: "0.72rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "#6b6560" }}>Deployed on</span>
-              {["Ethereum Sepolia Testnet", "WeatherOptionV3.sol", "WeatherOptionsVault.sol"].map((c, i) => (
+              {["Ethereum Sepolia Testnet", "Bruma.sol", "BrumaVault.sol"].map((c, i) => (
                 <span key={i} style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.8rem", color: "#1c2b1e" }}>{c}</span>
               ))}
             </div>
@@ -470,25 +470,19 @@ export default function LandingPage({ onStart }: LandingPageProps) {
             <Reveal>
               <div className="lp-about-image-area">
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ ...S.aboutImgPlaceholder, aspectRatio: "16/7" }}>
-                    <RainDrop />
-                    <span style={S.aboutImgText}>David · Portrait or workspace</span>
-                  </div>
+                  <img src="/myphoto.png" alt="David Raigoza" style={{ width: "100%", aspectRatio: "16/7", objectFit: "cover", display: "block" }} />
+
                 </div>
-                <div style={{ ...S.aboutImgPlaceholder, aspectRatio: "1/1" }}>
-                  <RainDrop />
-                  <span style={S.aboutImgText}>The farm or nature context</span>
-                </div>
-                <div style={{ ...S.aboutImgPlaceholder, aspectRatio: "1/1" }}>
-                  <RainDrop />
-                  <span style={S.aboutImgText}>Medellín skyline or project artifact</span>
-                </div>
+                <img src="/cityphoto.png" alt="Medellín" style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block" }} />
+
+                <img src="/medellin.png" alt="Farm and nature" style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block" }} />
+
               </div>
             </Reveal>
             <Reveal delay={0.2}>
               <span style={{ ...S.label, color: "rgba(201,145,61,0.8)" }}>The Builder</span>
-              <h2 style={S.aboutTitle}>Designed by someone who understands both the land and the code.</h2>
-              <p style={S.aboutBody}>Weather Options was conceived, designed, and built by a single person over an intense sprint — with a little help from AI companions. The project sits at the intersection of product design, financial engineering, and a genuine desire to build tools that matter to people outside the crypto native world.</p>
+              <h2 style={S.aboutTitle}>David Raigoza Product Designer Engineer.</h2>
+              <p style={S.aboutBody}>Bruma Protocol was conceived, designed, and built by a single person over an intense sprint — with a little help from AI companions. The project sits at the intersection of product design, financial engineering, and a genuine desire to build tools that matter to people outside the crypto native world.</p>
               <p style={S.aboutBody}>The aesthetic and architectural philosophy guiding this project is the same as the origin story: nature-contained, considered, and built to endure. Structures that breathe with the environment rather than fight it.</p>
               <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginTop: "2rem" }}>
                 {["You", "Claude — AI Architect", "ChatGPT — UI Muse", "Copilot — Code Companion"].map((m, i) => (

@@ -501,7 +501,7 @@ export default function ImprovedCreateOptionFlow() {
         <div style={css.topBar} />
         <div style={{ padding: '4rem 2rem', fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
           <div style={{ fontSize: '3rem', marginBottom: '1.25rem' }}>🌦</div>
-          <h2 style={{ ...css.pageTitle, marginBottom: '0.75rem' }}>Weather Options</h2>
+          <h2 style={{ ...css.pageTitle, marginBottom: '0.75rem' }}>Bruma Protocol</h2>
           <p style={css.pageSub}>Connect your wallet to start protecting against rainfall risk.</p>
         </div>
       </div>
