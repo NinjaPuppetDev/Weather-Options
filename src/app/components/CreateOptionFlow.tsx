@@ -1,6 +1,15 @@
 'use client';
 
-import { useState, useEffect, useReducer, useCallback, useMemo, useRef, CSSProperties, ReactNode, ChangeEvent } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useReducer,
+  useCallback,
+  useMemo,
+  useRef,
+  CSSProperties,
+  ChangeEvent,
+} from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 'wagmi';
 import { formatEther, parseEther } from 'viem';
 import {
@@ -232,7 +241,13 @@ function ErrorBanner({
 }
 
 // ─── InfoBox (non-error notices) ────────────────────────────────────────────
-function InfoBox({ variant, title, children }: { variant: 'success' | 'warn' | 'info'; title: string; children: ReactNode }) {
+interface InfoBoxProps {
+  variant: 'success' | 'warn' | 'info';
+  title: string;
+  children: React.ReactNode;
+}
+
+function InfoBox({ variant, title, children }: InfoBoxProps) {
   const map = {
     success: { bg: T.successBg, border: T.successBorder, color: T.successText },
     warn:    { bg: T.warnBg,    border: T.warnBorder,    color: T.warnText    },
@@ -265,9 +280,7 @@ type FormState = {
 type AppState = {
   step: Step;
   requestId: string;
-  /** Parsed error for the quote-request phase */
   quoteError: ParsedContractError | null;
-  /** Parsed error for the create-option phase */
   createError: ParsedContractError | null;
   txHash: string | null;
   simulationSuccess: boolean;
@@ -310,7 +323,6 @@ const DEFAULT_LOCATIONS: CityEntry[] = [
   { name: 'Miami',    lat: '25.76',  lon: '-80.19',  emoji: '🌴' },
 ];
 
-/** Extended built-in city directory used for the lookup panel */
 const CITY_DIRECTORY: CityEntry[] = [
   { name: 'Amsterdam',      lat: '52.37',  lon: '4.90',    emoji: '🚲' },
   { name: 'Bangkok',        lat: '13.75',  lon: '100.52',  emoji: '🛕' },
@@ -368,15 +380,13 @@ const isValidLat   = (lat: string) => { const n = Number(lat); return !isNaN(n) 
 const isValidLon   = (lon: string) => { const n = Number(lon); return !isNaN(n) && n >= -180 && n <= 180; };
 
 // ─── CityLookup component ───────────────────────────────────────────────────
-function CityLookup({
-  userCities,
-  onSelect,
-  onAddCity,
-}: {
+interface CityLookupProps {
   userCities: CityEntry[];
   onSelect: (city: CityEntry) => void;
   onAddCity: (city: CityEntry) => void;
-}) {
+}
+
+function CityLookup({ userCities, onSelect, onAddCity }: CityLookupProps) {
   const [query, setQuery]       = useState('');
   const [newName, setNewName]   = useState('');
   const [newLat, setNewLat]     = useState('');
@@ -384,7 +394,6 @@ function CityLookup({
   const [addError, setAddError] = useState('');
 
   const allCities = useMemo(() => {
-    // Merge user cities on top, deduplicate by name (user takes precedence)
     const map = new Map<string, CityEntry>();
     [...CITY_DIRECTORY].forEach(c => map.set(c.name.toLowerCase(), c));
     [...userCities].forEach(c => map.set(c.name.toLowerCase(), c));
@@ -412,7 +421,6 @@ function CityLookup({
 
   return (
     <div className="city-lookup-panel" style={{ padding: '1.5rem', background: T.amberLight, border: `1px solid ${T.amberBorder}`, marginTop: '1rem' }}>
-      {/* Header row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
         <span style={{ fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: T.amber, fontFamily: "'DM Mono', monospace" }}>
           City directory
@@ -422,15 +430,13 @@ function CityLookup({
         </span>
       </div>
 
-      {/* Search */}
       <input
         value={query}
-        onChange={e => setQuery(e.target.value)}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
         placeholder="Search city…"
         style={{ ...sInput(), marginBottom: 0 }}
       />
 
-      {/* City list */}
       <div className="city-lookup-list">
         {filtered.length === 0 ? (
           <div style={{ padding: '0.75rem 1rem', fontSize: '0.82rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>
@@ -461,13 +467,12 @@ function CityLookup({
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-              {/* Google Maps link */}
               <a
                 href={googleMapsUrl(city.lat, city.lon)}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Open in Google Maps"
-                onClick={e => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
                 style={{
                   fontSize: '0.68rem', color: T.amber, fontFamily: "'DM Mono', monospace",
                   textDecoration: 'none', padding: '0.2rem 0.45rem',
@@ -477,9 +482,8 @@ function CityLookup({
               >
                 map ↗
               </a>
-              {/* Select button */}
               <button
-                onClick={e => { e.stopPropagation(); onSelect(city); }}
+                onClick={(e) => { e.stopPropagation(); onSelect(city); }}
                 style={{
                   fontSize: '0.68rem', padding: '0.2rem 0.55rem',
                   background: T.green, color: T.cream,
@@ -494,10 +498,8 @@ function CityLookup({
         ))}
       </div>
 
-      {/* Divider */}
       <div style={{ height: 1, background: T.amberBorder, margin: '1rem 0 0.85rem' }} />
 
-      {/* Add custom city */}
       <p style={{ fontSize: '0.72rem', letterSpacing: '0.18em', textTransform: 'uppercase' as const, color: T.textMuted, fontFamily: "'DM Mono', monospace", marginBottom: '0.6rem' }}>
         Add a city
       </p>
@@ -511,15 +513,15 @@ function CityLookup({
       <div className="city-add-row">
         <div>
           <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: T.textMuted, marginBottom: '0.35rem', fontFamily: "'DM Mono', monospace" }}>Name</label>
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Bogotá" style={sInput()} />
+          <input value={newName} onChange={(e: ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)} placeholder="e.g. Bogotá" style={sInput()} />
         </div>
         <div>
           <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: T.textMuted, marginBottom: '0.35rem', fontFamily: "'DM Mono', monospace" }}>Lat</label>
-          <input value={newLat} onChange={e => setNewLat(e.target.value)} placeholder="4.71" style={sInput(!!newLat && !isValidLat(newLat))} />
+          <input value={newLat} onChange={(e: ChangeEvent<HTMLInputElement>) => setNewLat(e.target.value)} placeholder="4.71" style={sInput(!!newLat && !isValidLat(newLat))} />
         </div>
         <div>
           <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: T.textMuted, marginBottom: '0.35rem', fontFamily: "'DM Mono', monospace" }}>Lon</label>
-          <input value={newLon} onChange={e => setNewLon(e.target.value)} placeholder="-74.07" style={sInput(!!newLon && !isValidLon(newLon))} />
+          <input value={newLon} onChange={(e: ChangeEvent<HTMLInputElement>) => setNewLon(e.target.value)} placeholder="-74.07" style={sInput(!!newLon && !isValidLon(newLon))} />
         </div>
         <button
           onClick={handleAddCity}
@@ -571,7 +573,6 @@ function useQuote(
     query: { enabled: !!requestId && isFulfilled === true },
   });
 
-  // Extract request ID from receipt logs
   useEffect(() => {
     if (isQuoteSuccess && quoteReceipt) {
       for (const log of quoteReceipt.logs) {
@@ -625,7 +626,6 @@ function useQuote(
         notional:    parseEther(form.notional),
       };
 
-      // Simulate first so errors surface before wallet prompt
       await publicClient.simulateContract({
         account: address, address: CONTRACTS.WEATHER_OPTION,
         abi: WEATHER_OPTION_ABI, functionName: 'requestPremiumQuote', args: [params],
@@ -661,9 +661,11 @@ function useQuote(
 function Spinner({ color = T.amber }: { color?: string }) {
   return <div style={{ ...css.spinnerRing, borderTopColor: color }} />;
 }
-function SectionLabel({ children }: { children: ReactNode }) {
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return <span style={css.label}>{children}</span>;
 }
+
 function Divider() {
   return <div style={css.divider} />;
 }
@@ -686,9 +688,7 @@ export default function CreateOptionFlow() {
     customLon: '',
   });
 
-  // User-added cities (persisted in component lifetime; could be lifted to localStorage if desired)
   const [userCities, setUserCities] = useState<CityEntry[]>([]);
-  // Whether the city lookup panel is open
   const [showCityLookup, setShowCityLookup] = useState(false);
 
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -713,7 +713,6 @@ export default function CreateOptionFlow() {
   const { writeContract: createOption, data: createHash, error: createWagmiError, isPending: isCreatePending } = useWriteContract();
   const { isSuccess: isCreateSuccess } = useWaitForTransactionReceipt({ hash: createHash });
 
-  // ── Sync quote state into reducer ──────────────────────────────────────
   useEffect(() => {
     if (quote.isLoading) {
       dispatch({ type: 'SET_STEP',        payload: 'quote-loading' });
@@ -755,7 +754,6 @@ export default function CreateOptionFlow() {
 
   useEffect(() => setMounted(true), []);
 
-  // ── Handlers ────────────────────────────────────────────────────────────
   const handleRequestQuote = useCallback(() => {
     if (form.isCustomLocation) {
       if (!form.customLat || !form.customLon) {
@@ -795,7 +793,6 @@ export default function CreateOptionFlow() {
     dispatch({ type: 'SET_STEP', payload: 'form' });
   }, [quote]);
 
-  /** Pick a random city from the full directory */
   const handleRandomize = useCallback(() => {
     const pool = [...CITY_DIRECTORY, ...userCities];
     const city = pool[Math.floor(Math.random() * pool.length)];
@@ -808,7 +805,6 @@ export default function CreateOptionFlow() {
     setShowCityLookup(false);
   }, [userCities]);
 
-  /** Select a city from the lookup */
   const handleCitySelect = useCallback((city: CityEntry) => {
     setForm(prev => ({
       ...prev,
@@ -819,7 +815,6 @@ export default function CreateOptionFlow() {
     setShowCityLookup(false);
   }, []);
 
-  /** Add a new user city */
   const handleAddUserCity = useCallback((city: CityEntry) => {
     setUserCities(prev => {
       const exists = prev.some(c => c.name.toLowerCase() === city.name.toLowerCase());
@@ -890,10 +885,7 @@ export default function CreateOptionFlow() {
       ? form.customLat && form.customLon ? `${form.customLat}°, ${form.customLon}°` : '—'
       : `${LOCATIONS[form.locationIdx].lat}°, ${LOCATIONS[form.locationIdx].lon}°`;
 
-    // Warn proactively if duration is very short (likely to hit PremiumBelowMinimum)
     const showShortDurationWarning = form.days < 3;
-
-    // Resolved minimum premium string — always a string, never unknown
     const minPremiumStr: string = minPremium ? formatEther(minPremium as bigint) : '0.05';
 
     return (
@@ -940,10 +932,8 @@ export default function CreateOptionFlow() {
 
           <Divider />
 
-          {/* ── Location section ─────────────────────────────────────────── */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
             <SectionLabel>Location</SectionLabel>
-            {/* Action buttons: Randomize + City lookup toggle */}
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem' }}>
               <button
                 onClick={handleRandomize}
@@ -989,7 +979,6 @@ export default function CreateOptionFlow() {
             </button>
           </div>
 
-          {/* City lookup panel */}
           {showCityLookup && (
             <CityLookup
               userCities={userCities}
@@ -998,19 +987,18 @@ export default function CreateOptionFlow() {
             />
           )}
 
-          {/* Manual coordinate inputs (shown when custom is selected) */}
           {form.isCustomLocation && !showCityLookup && (
             <div style={css.customPanel}>
               <p style={css.customPanelTitle}>Manual coordinates</p>
               <div className="cof-coord-grid">
                 <div>
                   <label style={css.inputLabel}>Latitude (−90 to 90)</label>
-                  <input value={form.customLat} onChange={(e) => setForm({ ...form, customLat: e.target.value })}
+                  <input value={form.customLat} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, customLat: e.target.value })}
                     placeholder="e.g. 6.25" style={sInput(!!form.customLat && !isValidLat(form.customLat))} />
                 </div>
                 <div>
                   <label style={css.inputLabel}>Longitude (−180 to 180)</label>
-                  <input value={form.customLon} onChange={(e) => setForm({ ...form, customLon: e.target.value })}
+                  <input value={form.customLon} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, customLon: e.target.value })}
                     placeholder="e.g. −75.56" style={sInput(!!form.customLon && !isValidLon(form.customLon))} />
                 </div>
               </div>
@@ -1053,33 +1041,32 @@ export default function CreateOptionFlow() {
               <label style={css.inputLabel}>Notional (ETH / mm)</label>
               <input
                 type="text" value={form.notional}
-                onChange={(e) => setForm({ ...form, notional: e.target.value })}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, notional: e.target.value })}
                 style={sInput()}
               />
             </div>
           </div>
 
-          {/* ── FIX: extract minPremiumStr as a typed string before JSX ── */}
           {showShortDurationWarning && (
             <InfoBox variant="warn" title="Short duration">
               {`Options under 3 days often produce a premium below the protocol minimum of ${minPremiumStr} ETH and will be rejected. Consider a longer coverage period.`}
             </InfoBox>
           )}
 
-          {/* Proactive small-notional warning */}
-          {minNotional && parseEther(form.notional || '0') < (minNotional as bigint) && (
-            <InfoBox variant="warn" title="Notional too small">
-              Minimum notional is {formatEther(minNotional as bigint)} ETH/mm.
-              Please increase the notional amount.
-            </InfoBox>
-          )}
+          {(() => {
+            const minN = minNotional as bigint | undefined;
+            return minN !== undefined && parseEther(form.notional || '0') < minN ? (
+              <InfoBox variant="warn" title="Notional too small">
+                {`Minimum notional is ${formatEther(minN)} ETH/mm. Please increase the notional amount.`}
+              </InfoBox>
+            ) : null;
+          })()}
 
           <div className="cof-payout-bar">
             <span style={css.payoutLabel}>Maximum payout</span>
             <span style={css.payoutValue}>{formatEther(maxPayout)} ETH</span>
           </div>
 
-          {/* Quote-phase error */}
           {state.quoteError && (
             <ErrorBanner
               error={state.quoteError}
@@ -1087,7 +1074,6 @@ export default function CreateOptionFlow() {
             />
           )}
 
-          {/* Pre-flight check passed notice */}
           {state.simulationSuccess && !state.quoteError && (
             <InfoBox variant="success" title="Pre-flight check passed">
               Simulation successful — confirm in your wallet.
@@ -1150,7 +1136,6 @@ export default function CreateOptionFlow() {
             ))}
           </div>
 
-          {/* Zero-premium warning — oracle returned 0 */}
           {isPremiumZero && (
             <ErrorBanner
               error={{
@@ -1163,7 +1148,6 @@ export default function CreateOptionFlow() {
             />
           )}
 
-          {/* Below-minimum warning */}
           {!isPremiumZero && !isPremiumValid && (
             <ErrorBanner
               error={{
@@ -1174,7 +1158,6 @@ export default function CreateOptionFlow() {
             />
           )}
 
-          {/* Create-phase error */}
           {state.createError && (
             <ErrorBanner
               error={state.createError}
