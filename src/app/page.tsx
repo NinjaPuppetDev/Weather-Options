@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import Header from './components/Header';
 import LandingPage from './components/LandingPage';
-import ImprovedCreateOptionFlow from './components/ImprovedCreateOptionFlow';
-import ImprovedMyOptions from './components/ImprovedMyOptions';
+import ImprovedCreateOptionFlow from './components/CreateOptionFlow';
+import ImprovedMyOptions from './components/MyOptions';
 import LiquidityPool from './components/LiquidityPool';
 
 export default function Home() {
