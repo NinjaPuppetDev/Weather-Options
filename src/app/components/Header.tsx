@@ -11,13 +11,15 @@ const T = {
   muted:  '#4a5c4b',
 };
 
-type Tab = 'home' | 'create' | 'my-options' | 'liquidity';
+type Tab = 'home' | 'create' | 'my-options' | 'liquidity' | 'workflow';
 interface HeaderProps { activeTab: Tab; setActiveTab: (tab: Tab) => void; }
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'create',     label: 'Create'  },
   { key: 'my-options', label: 'Options' },
   { key: 'liquidity',  label: 'Pool'    },
+  { key: 'workflow',   label: 'Workflow' },
+
 ];
 
 function tabStyle(active: boolean, isLast: boolean): CSSProperties {

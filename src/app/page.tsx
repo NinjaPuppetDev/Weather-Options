@@ -6,9 +6,10 @@ import LandingPage from './components/LandingPage';
 import ImprovedCreateOptionFlow from './components/CreateOptionFlow';
 import ImprovedMyOptions from './components/MyOptions';
 import LiquidityPool from './components/LiquidityPool';
+import WorkflowMonitor from './components/WorkflowMonitor';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'home' | 'create' | 'my-options' | 'liquidity'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'create' | 'my-options' | 'liquidity' | 'workflow'>('home');
 
   const isHome = activeTab === 'home';
 
@@ -23,6 +24,7 @@ export default function Home() {
           {activeTab === 'create'     && <ImprovedCreateOptionFlow />}
           {activeTab === 'my-options' && <ImprovedMyOptions />}
           {activeTab === 'liquidity'  && <LiquidityPool />}
+          {activeTab === 'workflow'   && <WorkflowMonitor />}
         </main>
       )}
     </div>
