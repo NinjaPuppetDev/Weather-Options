@@ -1,15 +1,16 @@
-// Contract configuration for Weather Options V3
-// Sepolia Testnet Deployment
+// Contract configuration for Bruma Protocol
+// Sepolia Testnet Deployment — v2 (with ReinsurancePool)
 
 export const CONTRACTS = {
-  WEATHER_OPTION:       '0x762a995182433fDE85dC850Fa8FF6107582110d2' as const,
-  VAULT:                '0x681915B4226014045665e4D5d6Bb348eB90cB32f' as const,
+  WEATHER_OPTION:       '0xB8171af0ecb428a74626C63dA843dc7840D409da' as const,
+  VAULT:                '0x91E707c9c78Cd099716A91BC63190BB813BE16d4' as const,
+  REINSURANCE_POOL:     '0x1f24B221d3aEd386A239E1AD21B61bCE44dfcAbB' as const,
   WETH:                 '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14' as const,
   PREMIUM_CONSUMER:     '0xEB36260fc0647D9ca4b67F40E1310697074897d4' as const,
   PREMIUM_COORDINATOR:  '0xf322B700c27a8C527F058f48481877855bD84F6e' as const,
   RAINFALL_CONSUMER:    '0x96722110DE16F18d3FF21E070F2251cbf8376f92' as const,
   RAINFALL_COORDINATOR: '0x58079Fd1c9BCdbe91eD4c83E1bE196B5FFBa62e6' as const,
-  CCIP_ESCROW_FACTORY:  '0x39a0430cFB4E1b850087ba6157bB0c5F35b20dF4' as const,
+  CCIP_ESCROW_FACTORY:  '0x1DA7E84035FA37232F4955838feB9d851A900e3F' as const,
 } as const;
 
 export const CONTRACT_ADDRESS = CONTRACTS.WEATHER_OPTION;
@@ -111,22 +112,20 @@ export const WEATHER_OPTION_ABI = [
     stateMutability: 'view',
   },
   {
-    type: 'function', name: 'getPendingOption',
+    type: 'function', name: 'getPendingQuote',
     inputs: [{ name: 'quoteRequestId', type: 'bytes32' }],
-    outputs: [
-      { name: 'params', type: 'tuple', components: [
-        { name: 'optionType',  type: 'uint8'   },
-        { name: 'latitude',    type: 'string'  },
-        { name: 'longitude',   type: 'string'  },
-        { name: 'startDate',   type: 'uint256' },
-        { name: 'expiryDate',  type: 'uint256' },
-        { name: 'strikeMM',    type: 'uint256' },
-        { name: 'spreadMM',    type: 'uint256' },
-        { name: 'notional',    type: 'uint256' },
-      ]},
-      { name: 'buyer',     type: 'address' },
-      { name: 'timestamp', type: 'uint256' },
-    ],
+    outputs: [{ name: '', type: 'tuple', components: [
+      { name: 'optionType',  type: 'uint8'   },
+      { name: 'latitude',    type: 'string'  },
+      { name: 'longitude',   type: 'string'  },
+      { name: 'startDate',   type: 'uint256' },
+      { name: 'expiryDate',  type: 'uint256' },
+      { name: 'strikeMM',    type: 'uint256' },
+      { name: 'spreadMM',    type: 'uint256' },
+      { name: 'notional',    type: 'uint256' },
+      { name: 'buyer',       type: 'address' },
+      { name: 'timestamp',   type: 'uint256' },
+    ]}],
     stateMutability: 'view',
   },
   {
@@ -215,10 +214,10 @@ export const WEATHER_OPTION_ABI = [
   {
     type: 'event', name: 'OptionSettled',
     inputs: [
-      { name: 'tokenId',       type: 'uint256', indexed: true  },
-      { name: 'actualRainfall',type: 'uint256', indexed: false },
-      { name: 'payout',        type: 'uint256', indexed: false },
-      { name: 'beneficiary',   type: 'address', indexed: false },
+      { name: 'tokenId',        type: 'uint256', indexed: true  },
+      { name: 'actualRainfall', type: 'uint256', indexed: false },
+      { name: 'payout',         type: 'uint256', indexed: false },
+      { name: 'beneficiary',    type: 'address', indexed: false },
     ],
   },
   {
@@ -231,6 +230,167 @@ export const WEATHER_OPTION_ABI = [
   },
 ] as const;
 
+// ─── ReinsurancePool ABI ────────────────────────────────────────────────────
+export const REINSURANCE_POOL_ABI = [
+  {
+    type: 'function', name: 'totalAssets',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'totalDrawn',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'accruedYield',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'availableCapacity',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'maxDrawableNow',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'primaryVault',
+    inputs: [], outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'guardian',
+    inputs: [], outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'lockupPeriod',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'receiveYield',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'deposit',
+    inputs: [
+      { name: 'assets',   type: 'uint256' },
+      { name: 'receiver', type: 'address' },
+    ],
+    outputs: [{ name: 'shares', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'withdraw',
+    inputs: [
+      { name: 'assets',   type: 'uint256' },
+      { name: 'receiver', type: 'address' },
+      { name: 'owner',    type: 'address' },
+    ],
+    outputs: [{ name: 'shares', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'balanceOf',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'totalSupply',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+] as const;
+
+// ─── Vault ABI ──────────────────────────────────────────────────────────────
+export const VAULT_ABI = [
+  {
+    type: 'function', name: 'deposit',
+    inputs: [
+      { name: 'assets',   type: 'uint256' },
+      { name: 'receiver', type: 'address' },
+    ],
+    outputs: [{ name: 'shares', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'withdraw',
+    inputs: [
+      { name: 'assets',   type: 'uint256' },
+      { name: 'receiver', type: 'address' },
+      { name: 'owner',    type: 'address' },
+    ],
+    outputs: [{ name: 'shares', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'totalAssets',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'totalLocked',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'availableLiquidity',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'utilizationRate',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'reinsurancePool',
+    inputs: [], outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'reinsuranceYieldBps',
+    inputs: [], outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'balanceOf',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'maxWithdraw',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function', name: 'getMetrics',
+    inputs: [],
+    outputs: [{ name: '', type: 'tuple', components: [
+      { name: 'tvl',                 type: 'uint256' },
+      { name: 'locked',              type: 'uint256' },
+      { name: 'available',           type: 'uint256' },
+      { name: 'utilizationBps',      type: 'uint256' },
+      { name: 'premiumsEarned',      type: 'uint256' },
+      { name: 'totalPayouts',        type: 'uint256' },
+      { name: 'netPnL',              type: 'int256'  },
+      { name: 'reinsuranceReceived', type: 'uint256' },
+    ]}],
+    stateMutability: 'view',
+  },
+] as const;
+
+// ─── Other ABIs ─────────────────────────────────────────────────────────────
 export const CCIP_ESCROW_FACTORY_ABI = [
   {
     type: 'function', name: 'getEscrowsByOwner',
@@ -276,15 +436,14 @@ export const CCIP_ESCROW_FACTORY_ABI = [
   {
     type: 'event', name: 'EscrowDeployed',
     inputs: [
-      { name: 'escrow',                    type: 'address', indexed: true  },
-      { name: 'owner',                     type: 'address', indexed: true  },
-      { name: 'destinationChainSelector',  type: 'uint64',  indexed: false },
-      { name: 'destinationReceiver',       type: 'address', indexed: false },
+      { name: 'escrow',                   type: 'address', indexed: true  },
+      { name: 'owner',                    type: 'address', indexed: true  },
+      { name: 'destinationChainSelector', type: 'uint64',  indexed: false },
+      { name: 'destinationReceiver',      type: 'address', indexed: false },
     ],
   },
 ] as const;
 
-// Minimal ABI for BrumaCCIPEscrow — only what the UI needs
 export const CCIP_ESCROW_ABI = [
   {
     type: 'function', name: 'linkBalance',
@@ -330,64 +489,6 @@ export const PREMIUM_CONSUMER_ABI = [
   },
 ] as const;
 
-export const VAULT_ABI = [
-  {
-    type: 'function', name: 'deposit',
-    inputs: [
-      { name: 'assets',   type: 'uint256' },
-      { name: 'receiver', type: 'address' },
-    ],
-    outputs: [{ name: 'shares', type: 'uint256' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function', name: 'withdraw',
-    inputs: [
-      { name: 'assets',   type: 'uint256' },
-      { name: 'receiver', type: 'address' },
-      { name: 'owner',    type: 'address' },
-    ],
-    outputs: [{ name: 'shares', type: 'uint256' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function', name: 'totalAssets',
-    inputs: [], outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function', name: 'availableLiquidity',
-    inputs: [], outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function', name: 'balanceOf',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function', name: 'maxWithdraw',
-    inputs: [{ name: 'owner', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function', name: 'getMetrics',
-    inputs: [],
-    outputs: [
-      { name: 'tvl',         type: 'uint256' },
-      { name: 'locked',      type: 'uint256' },
-      { name: 'available',   type: 'uint256' },
-      { name: 'utilization', type: 'uint256' },
-      { name: 'premiums',    type: 'uint256' },
-      { name: 'payouts',     type: 'uint256' },
-      { name: 'netPnL',      type: 'int256'  },
-    ],
-    stateMutability: 'view',
-  },
-] as const;
-
 export const WETH_ABI = [
   {
     type: 'function', name: 'deposit',
@@ -426,6 +527,7 @@ export const WETH_ABI = [
   },
 ] as const;
 
+// ─── Enums & Types ──────────────────────────────────────────────────────────
 export enum OptionType {
   CALL = 0,
   PUT  = 1,
@@ -472,4 +574,12 @@ export interface Option {
     finalPayout:       bigint;
     ownerAtSettlement: `0x${string}`;
   };
+}
+
+export interface ReinsuranceMetrics {
+  totalAssets:       bigint;
+  totalDrawn:        bigint;
+  accruedYield:      bigint;
+  availableCapacity: bigint;
+  maxDrawableNow:    bigint;
 }

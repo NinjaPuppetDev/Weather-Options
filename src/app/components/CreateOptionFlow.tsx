@@ -16,35 +16,40 @@ import {
   WEATHER_OPTION_ABI,
   PREMIUM_CONSUMER_ABI,
   VAULT_ABI,
+  REINSURANCE_POOL_ABI,
   CONTRACTS,
   OptionType,
   CreateOptionParams,
 } from '../lib/contract';
 import { parseContractError, ParsedContractError } from '../lib/contractErrors';
+import RainfallChart from './RainfallChart';
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
 const T = {
-  cream:       '#f4ede0',
-  green:       '#1c2b1e',
-  greenMid:    '#2d4a30',
-  greenMuted:  '#4a5c4b',
-  amber:       '#c9913d',
-  amberLight:  'rgba(201,145,61,0.10)',
-  amberBorder: 'rgba(201,145,61,0.25)',
-  border:      'rgba(28,43,30,0.12)',
-  borderHover: 'rgba(28,43,30,0.28)',
-  text:        '#1c2b1e',
-  textMuted:   '#6b6560',
-  white:       '#ffffff',
-  errorBg:     '#fef2f0',
-  errorBorder: '#e8b4ad',
-  errorText:   '#7c2d12',
-  successBg:   '#f0f7f1',
+  cream:        '#f4ede0',
+  green:        '#1c2b1e',
+  greenMid:     '#2d4a30',
+  greenMuted:   '#4a5c4b',
+  amber:        '#c9913d',
+  amberLight:   'rgba(201,145,61,0.10)',
+  amberBorder:  'rgba(201,145,61,0.25)',
+  teal:         '#1a6b5e',
+  tealLight:    'rgba(26,107,94,0.08)',
+  tealBorder:   'rgba(26,107,94,0.22)',
+  border:       'rgba(28,43,30,0.12)',
+  borderHover:  'rgba(28,43,30,0.28)',
+  text:         '#1c2b1e',
+  textMuted:    '#6b6560',
+  white:        '#ffffff',
+  errorBg:      '#fef2f0',
+  errorBorder:  '#e8b4ad',
+  errorText:    '#7c2d12',
+  successBg:    '#f0f7f1',
   successBorder:'#a8c9ac',
-  successText: '#14532d',
-  warnBg:      '#fdfaee',
-  warnBorder:  '#e8d5a3',
-  warnText:    '#78350f',
+  successText:  '#14532d',
+  warnBg:       '#fdfaee',
+  warnBorder:   '#e8d5a3',
+  warnText:     '#78350f',
 };
 
 const RESPONSIVE = `
@@ -65,11 +70,36 @@ const RESPONSIVE = `
   .cof-coord-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   .cof-param-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 2.25rem; }
   .cof-payout-bar { padding: 1.5rem 2rem; background: ${T.green}; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-  .cof-vault-banner { padding: 1.25rem 1.5rem; margin-bottom: 2.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+  .cof-liquidity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 2.25rem; }
+  .cof-vault-banner { padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+  .cof-pool-banner  { padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
   .cof-review-row { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid ${T.border}; }
   .cof-review-row-last { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0 0; }
   .cof-btn-row { display: flex; gap: 0.75rem; }
   .cof-error-banner { animation: fadeSlideIn 0.2s ease; }
+  .cof-pool-stat { display: flex; flex-direction: column; gap: 0.2rem; }
+
+  /* ── Rainfall chart ── */
+  @keyframes rc-shimmer {
+    0%   { opacity: 0.35; }
+    50%  { opacity: 0.65; }
+    100% { opacity: 0.35; }
+  }
+  @keyframes rc-appear {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes rc-count {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .rc-skel { animation: rc-shimmer 1.5s ease-in-out infinite; }
+  .rc-chart { animation: rc-appear 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .rc-stat-val { animation: rc-count 0.5s ease forwards; }
+  .rc-stat-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: rgba(28,43,30,0.11); border-top: 1px solid rgba(28,43,30,0.11);
+  }
 
   /* City lookup */
   .city-lookup-panel { animation: dropIn 0.18s ease; }
@@ -83,12 +113,15 @@ const RESPONSIVE = `
     .cof-loc-grid  { grid-template-columns: 1fr 1fr; }
     .cof-coord-grid { grid-template-columns: 1fr; }
     .cof-param-grid { grid-template-columns: 1fr; }
+    .cof-liquidity-grid { grid-template-columns: 1fr; }
     .cof-payout-bar { flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1.25rem; }
     .cof-vault-banner { flex-direction: column; align-items: flex-start; }
+    .cof-pool-banner  { flex-direction: column; align-items: flex-start; }
     .cof-review-row { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
     .cof-review-row-last { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
     .cof-btn-row { flex-direction: column; }
     .city-add-row { grid-template-columns: 1fr 1fr; }
+    .rc-stat-grid { grid-template-columns: repeat(2, 1fr); }
   }
 `;
 
@@ -151,103 +184,70 @@ function sConfirmBtn(disabled: boolean): CSSProperties {
 }
 
 const css: Record<string, CSSProperties> = {
-  wrap:         { fontFamily: "'Cormorant Garamond', Georgia, serif", background: T.cream, border: `1px solid ${T.border}`, overflow: 'hidden' },
-  topBar:       { height: 3, background: `linear-gradient(90deg, ${T.amber}, ${T.greenMid})` },
-  pageTitle:    { fontSize: 'clamp(1.5rem, 3vw, 2.5rem)', fontWeight: 400, color: T.green, letterSpacing: '-0.01em', marginBottom: '0.4rem', lineHeight: 1.1 },
-  pageSub:      { fontSize: '0.88rem', color: T.textMuted, letterSpacing: '0.06em', marginBottom: '2.5rem' },
-  label:        { display: 'block', fontSize: '0.72rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.amber, marginBottom: '0.85rem', fontFamily: "'DM Mono', monospace" },
-  divider:      { height: 1, background: T.border, margin: '2rem 0' },
-  vaultLabel:   { fontSize: '0.72rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: T.textMuted, fontFamily: "'DM Mono', monospace" },
-  vaultValue:   { fontSize: '1.3rem', fontWeight: 500, color: T.green, fontFamily: "'DM Mono', monospace" },
-  typeIcon:     { fontSize: '2rem', marginBottom: '0.75rem', display: 'block' },
-  typeTitle:    { fontSize: '1.2rem', fontWeight: 600, color: T.green, marginBottom: '0.25rem' },
-  typeDesc:     { fontSize: '0.82rem', color: T.textMuted },
-  locIcon:      { fontSize: '1.6rem', marginBottom: '0.4rem', display: 'block' },
-  locName:      { fontSize: '0.95rem', fontWeight: 600, color: T.green, marginBottom: '0.2rem' },
-  locCoord:     { fontSize: '0.7rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" },
-  customPanel:  { padding: '1.5rem', background: T.amberLight, border: `1px solid ${T.amberBorder}`, marginTop: '1rem' },
+  wrap:             { fontFamily: "'Cormorant Garamond', Georgia, serif", background: T.cream, border: `1px solid ${T.border}`, overflow: 'hidden' },
+  topBar:           { height: 3, background: `linear-gradient(90deg, ${T.amber}, ${T.greenMid})` },
+  pageTitle:        { fontSize: 'clamp(1.5rem, 3vw, 2.5rem)', fontWeight: 400, color: T.green, letterSpacing: '-0.01em', marginBottom: '0.4rem', lineHeight: 1.1 },
+  pageSub:          { fontSize: '0.88rem', color: T.textMuted, letterSpacing: '0.06em', marginBottom: '2.5rem' },
+  label:            { display: 'block', fontSize: '0.72rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.amber, marginBottom: '0.85rem', fontFamily: "'DM Mono', monospace" },
+  divider:          { height: 1, background: T.border, margin: '2rem 0' },
+  vaultLabel:       { fontSize: '0.68rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: T.textMuted, fontFamily: "'DM Mono', monospace" },
+  vaultValue:       { fontSize: '1.2rem', fontWeight: 500, color: T.green, fontFamily: "'DM Mono', monospace" },
+  poolLabel:        { fontSize: '0.68rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: T.teal, fontFamily: "'DM Mono', monospace" },
+  poolValue:        { fontSize: '1.1rem', fontWeight: 500, color: T.teal, fontFamily: "'DM Mono', monospace" },
+  poolSubValue:     { fontSize: '0.78rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" },
+  bannerTag:        { fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: "'DM Mono', monospace", padding: '0.2rem 0.5rem', borderRadius: 2 },
+  typeIcon:         { fontSize: '2rem', marginBottom: '0.75rem', display: 'block' },
+  typeTitle:        { fontSize: '1.2rem', fontWeight: 600, color: T.green, marginBottom: '0.25rem' },
+  typeDesc:         { fontSize: '0.82rem', color: T.textMuted },
+  locIcon:          { fontSize: '1.6rem', marginBottom: '0.4rem', display: 'block' },
+  locName:          { fontSize: '0.95rem', fontWeight: 600, color: T.green, marginBottom: '0.2rem' },
+  locCoord:         { fontSize: '0.7rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" },
+  customPanel:      { padding: '1.5rem', background: T.amberLight, border: `1px solid ${T.amberBorder}`, marginTop: '1rem' },
   customPanelTitle: { fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: T.amber, marginBottom: '1rem', fontFamily: "'DM Mono', monospace" },
-  inputLabel:   { display: 'block', fontSize: '0.72rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: T.textMuted, marginBottom: '0.4rem', fontFamily: "'DM Mono', monospace" },
+  inputLabel:       { display: 'block', fontSize: '0.72rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: T.textMuted, marginBottom: '0.4rem', fontFamily: "'DM Mono', monospace" },
   selectedCoord:    { fontSize: '0.82rem', color: T.textMuted, marginTop: '0.75rem' },
   selectedCoordVal: { fontFamily: "'DM Mono', monospace", fontWeight: 600, color: T.green },
-  paramField:   {},
-  payoutLabel:  { fontSize: '0.82rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(244,237,224,0.6)', fontFamily: "'DM Mono', monospace" },
-  payoutValue:  { fontSize: '1.75rem', fontWeight: 400, color: '#f4ede0', fontFamily: "'Cormorant Garamond', Georgia, serif" },
-  monoSmall:    { fontFamily: "'DM Mono', monospace", fontSize: '0.72rem', wordBreak: 'break-all' },
-  reviewCard:   { padding: '1.75rem', background: T.white, border: `1px solid ${T.border}`, borderBottom: `3px solid ${T.amber}`, marginBottom: '1.5rem' },
-  reviewLabel:  { fontSize: '0.88rem', color: T.textMuted },
-  reviewValue:  { fontFamily: "'DM Mono', monospace", fontSize: '0.95rem', color: T.green },
-  reviewTotal:  { fontSize: '1.4rem', fontWeight: 500, color: T.green },
-  cancelBtn:    { flex: 1, padding: '1rem', background: 'transparent', color: T.green, border: `1.5px solid ${T.border}`, fontSize: '0.82rem', letterSpacing: '0.18em', textTransform: 'uppercase' as const, cursor: 'pointer', fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 600 },
-  center:       { padding: '5rem 2.5rem', textAlign: 'center' as const, fontFamily: "'Cormorant Garamond', Georgia, serif" },
-  spinnerRing:  { width: 56, height: 56, border: `3px solid ${T.border}`, borderTopColor: T.amber, borderRadius: '50%', margin: '0 auto 2rem', animation: 'spin 0.9s linear infinite' },
-  centerTitle:  { fontSize: '1.75rem', fontWeight: 400, color: T.green, marginBottom: '0.5rem' },
-  centerSub:    { fontSize: '0.9rem', color: T.textMuted, marginBottom: '1.5rem' },
-  successWrap:  { padding: '5rem 2.5rem', textAlign: 'center' as const, background: T.successBg, fontFamily: "'Cormorant Garamond', Georgia, serif" },
-  successMark:  { fontSize: '3.5rem', marginBottom: '1rem' },
-  successTitle: { fontSize: '2.2rem', fontWeight: 400, color: T.successText, marginBottom: '0.5rem' },
-  successSub:   { fontSize: '0.9rem', color: T.textMuted, marginBottom: '1rem' },
+  paramField:       {},
+  payoutLabel:      { fontSize: '0.82rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(244,237,224,0.6)', fontFamily: "'DM Mono', monospace" },
+  payoutValue:      { fontSize: '1.75rem', fontWeight: 400, color: '#f4ede0', fontFamily: "'Cormorant Garamond', Georgia, serif" },
+  monoSmall:        { fontFamily: "'DM Mono', monospace", fontSize: '0.72rem', wordBreak: 'break-all' },
+  reviewCard:       { padding: '1.75rem', background: T.white, border: `1px solid ${T.border}`, borderBottom: `3px solid ${T.amber}`, marginBottom: '1.5rem' },
+  reviewLabel:      { fontSize: '0.88rem', color: T.textMuted },
+  reviewValue:      { fontFamily: "'DM Mono', monospace", fontSize: '0.95rem', color: T.green },
+  reviewTotal:      { fontSize: '1.4rem', fontWeight: 500, color: T.green },
+  cancelBtn:        { flex: 1, padding: '1rem', background: 'transparent', color: T.green, border: `1.5px solid ${T.border}`, fontSize: '0.82rem', letterSpacing: '0.18em', textTransform: 'uppercase' as const, cursor: 'pointer', fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 600 },
+  center:           { padding: '5rem 2.5rem', textAlign: 'center' as const, fontFamily: "'Cormorant Garamond', Georgia, serif" },
+  spinnerRing:      { width: 56, height: 56, border: `3px solid ${T.border}`, borderTopColor: T.amber, borderRadius: '50%', margin: '0 auto 2rem', animation: 'spin 0.9s linear infinite' },
+  centerTitle:      { fontSize: '1.75rem', fontWeight: 400, color: T.green, marginBottom: '0.5rem' },
+  centerSub:        { fontSize: '0.9rem', color: T.textMuted, marginBottom: '1.5rem' },
+  successWrap:      { padding: '5rem 2.5rem', textAlign: 'center' as const, background: T.successBg, fontFamily: "'Cormorant Garamond', Georgia, serif" },
+  successMark:      { fontSize: '3.5rem', marginBottom: '1rem' },
+  successTitle:     { fontSize: '2.2rem', fontWeight: 400, color: T.successText, marginBottom: '0.5rem' },
+  successSub:       { fontSize: '0.9rem', color: T.textMuted, marginBottom: '1rem' },
 };
 
-// ─── ErrorBanner component ──────────────────────────────────────────────────
-function ErrorBanner({
-  error,
-  onDismiss,
-  style,
-}: {
-  error: ParsedContractError;
-  onDismiss?: () => void;
-  style?: CSSProperties;
-}) {
+// ─── ErrorBanner ─────────────────────────────────────────────────────────────
+function ErrorBanner({ error, onDismiss, style }: { error: ParsedContractError; onDismiss?: () => void; style?: CSSProperties }) {
   const isCancelled = error.errorName === 'UserRejected';
   const bg     = isCancelled ? T.warnBg     : T.errorBg;
   const border = isCancelled ? T.warnBorder : T.errorBorder;
   const color  = isCancelled ? T.warnText   : T.errorText;
-
   return (
-    <div
-      className="cof-error-banner"
-      style={{
-        padding: '0.875rem 1rem',
-        background: bg,
-        border: `1px solid ${border}`,
-        marginBottom: '1.25rem',
-        display: 'flex',
-        gap: '0.75rem',
-        alignItems: 'flex-start',
-        ...style,
-      }}
-    >
-      <span style={{ fontSize: '1rem', flexShrink: 0, marginTop: '0.05rem' }}>
-        {isCancelled ? '⚠️' : '✕'}
-      </span>
+    <div className="cof-error-banner" style={{ padding: '0.875rem 1rem', background: bg, border: `1px solid ${border}`, marginBottom: '1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', ...style }}>
+      <span style={{ fontSize: '1rem', flexShrink: 0, marginTop: '0.05rem' }}>{isCancelled ? '⚠️' : '✕'}</span>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '0.82rem', fontWeight: 700, color, fontFamily: "'DM Mono', monospace", marginBottom: '0.2rem' }}>
-          {error.title}
-        </div>
-        <div style={{ fontSize: '0.82rem', color, lineHeight: 1.55 }}>
-          {error.detail}
-        </div>
+        <div style={{ fontSize: '0.82rem', fontWeight: 700, color, fontFamily: "'DM Mono', monospace", marginBottom: '0.2rem' }}>{error.title}</div>
+        <div style={{ fontSize: '0.82rem', color, lineHeight: 1.55 }}>{error.detail}</div>
       </div>
       {onDismiss && (
-        <button
-          onClick={onDismiss}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color, fontSize: '1rem', padding: 0, flexShrink: 0, lineHeight: 1 }}
-          aria-label="Dismiss"
-        >×</button>
+        <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', color, fontSize: '1rem', padding: 0, flexShrink: 0, lineHeight: 1 }} aria-label="Dismiss">×</button>
       )}
     </div>
   );
 }
 
-// ─── InfoBox (non-error notices) ────────────────────────────────────────────
-interface InfoBoxProps {
-  variant: 'success' | 'warn' | 'info';
-  title: string;
-  children: React.ReactNode;
-}
-
-function InfoBox({ variant, title, children }: InfoBoxProps) {
+// ─── InfoBox ─────────────────────────────────────────────────────────────────
+function InfoBox({ variant, title, children }: { variant: 'success' | 'warn' | 'info'; title: string; children: React.ReactNode }) {
   const map = {
     success: { bg: T.successBg, border: T.successBorder, color: T.successText },
     warn:    { bg: T.warnBg,    border: T.warnBorder,    color: T.warnText    },
@@ -258,6 +258,88 @@ function InfoBox({ variant, title, children }: InfoBoxProps) {
     <div style={{ padding: '1rem 1.25rem', background: v.bg, border: `1px solid ${v.border}`, marginBottom: '1.25rem' }}>
       {title && <p style={{ fontSize: '0.82rem', fontWeight: 700, color: v.color, marginBottom: '0.35rem' }}>{title}</p>}
       <div style={{ fontSize: '0.82rem', color: v.color, lineHeight: 1.6 }}>{children}</div>
+    </div>
+  );
+}
+
+// ─── LiquidityPanels ─────────────────────────────────────────────────────────
+interface LiquidityPanelsProps {
+  vaultLiquidity: bigint | undefined;
+  poolCapacity:   bigint | undefined;
+  poolYield:      bigint | undefined;
+  reinsuranceBps: bigint | undefined;
+  maxPayout:      bigint;
+}
+
+function LiquidityPanels({ vaultLiquidity, poolCapacity, poolYield, reinsuranceBps, maxPayout }: LiquidityPanelsProps) {
+  const hasEnough = vaultLiquidity !== undefined && maxPayout <= vaultLiquidity;
+  const isPoolActive = reinsuranceBps !== undefined && reinsuranceBps > BigInt(0);
+
+  const utilizationPct = vaultLiquidity !== undefined && vaultLiquidity > BigInt(0)
+    ? Number((maxPayout * BigInt(100)) / vaultLiquidity)
+    : 0;
+
+  return (
+    <div className="cof-liquidity-grid">
+      {/* Primary Vault */}
+      <div className="cof-vault-banner" style={{ ...sVaultBanner(!!hasEnough), borderRadius: 0 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <span style={{ ...css.bannerTag, background: 'rgba(28,43,30,0.08)', color: T.greenMuted }}>Primary Vault</span>
+          </div>
+          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' as const }}>
+            <div className="cof-pool-stat">
+              <span style={css.vaultLabel}>Available</span>
+              <span style={css.vaultValue}>{vaultLiquidity !== undefined ? formatEther(vaultLiquidity) : '—'} ETH</span>
+            </div>
+            <div className="cof-pool-stat">
+              <span style={css.vaultLabel}>Option needs</span>
+              <span style={{ ...css.vaultValue, color: hasEnough ? T.successText : T.errorText }}>
+                {formatEther(maxPayout)} ETH
+              </span>
+            </div>
+            {vaultLiquidity !== undefined && vaultLiquidity > BigInt(0) && (
+              <div className="cof-pool-stat">
+                <span style={css.vaultLabel}>Utilization</span>
+                <span style={{ ...css.vaultValue, fontSize: '0.95rem' }}>{utilizationPct}%</span>
+              </div>
+            )}
+          </div>
+          {!hasEnough && (
+            <p style={{ fontSize: '0.75rem', color: T.errorText, fontFamily: "'DM Mono', monospace", marginTop: '0.5rem' }}>
+              Insufficient liquidity — reduce notional or spread.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Reinsurance Pool */}
+      <div className="cof-pool-banner" style={{ background: T.tealLight, border: `1px solid ${T.tealBorder}` }}>
+        <div style={{ width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <span style={{ ...css.bannerTag, background: 'rgba(26,107,94,0.12)', color: T.teal }}>Reinsurance Pool</span>
+            {isPoolActive
+              ? <span style={{ ...css.bannerTag, background: T.successBg, color: T.successText }}>Active · {Number(reinsuranceBps)} bps</span>
+              : <span style={{ ...css.bannerTag, background: T.warnBg, color: T.warnText }}>Inactive</span>
+            }
+          </div>
+          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' as const }}>
+            <div className="cof-pool-stat">
+              <span style={css.poolLabel}>Capacity</span>
+              <span style={css.poolValue}>{poolCapacity !== undefined ? formatEther(poolCapacity) : '—'} ETH</span>
+            </div>
+            <div className="cof-pool-stat">
+              <span style={css.poolLabel}>Accrued yield</span>
+              <span style={{ ...css.poolValue, fontSize: '1rem' }}>{poolYield !== undefined ? formatEther(poolYield) : '—'} ETH</span>
+            </div>
+          </div>
+          {isPoolActive && (
+            <p style={{ fontSize: '0.72rem', color: T.teal, fontFamily: "'DM Mono', monospace", marginTop: '0.5rem', opacity: 0.8 }}>
+              {Number(reinsuranceBps) / 100}% of premiums routed to reinsurers
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -374,16 +456,15 @@ const CITY_DIRECTORY: CityEntry[] = [
 ];
 
 const LOCATIONS = DEFAULT_LOCATIONS;
-
 const TIME_BUFFER  = 600;
 const isValidLat   = (lat: string) => { const n = Number(lat); return !isNaN(n) && n >= -90  && n <= 90;  };
 const isValidLon   = (lon: string) => { const n = Number(lon); return !isNaN(n) && n >= -180 && n <= 180; };
 
-// ─── CityLookup component ───────────────────────────────────────────────────
+// ─── CityLookup ──────────────────────────────────────────────────────────────
 interface CityLookupProps {
   userCities: CityEntry[];
-  onSelect: (city: CityEntry) => void;
-  onAddCity: (city: CityEntry) => void;
+  onSelect:   (city: CityEntry) => void;
+  onAddCity:  (city: CityEntry) => void;
 }
 
 function CityLookup({ userCities, onSelect, onAddCity }: CityLookupProps) {
@@ -416,100 +497,47 @@ function CityLookup({ userCities, onSelect, onAddCity }: CityLookupProps) {
     setNewName(''); setNewLat(''); setNewLon('');
   };
 
-  const googleMapsUrl = (lat: string, lon: string) =>
-    `https://www.google.com/maps?q=${lat},${lon}`;
+  const googleMapsUrl = (lat: string, lon: string) => `https://www.google.com/maps?q=${lat},${lon}`;
 
   return (
     <div className="city-lookup-panel" style={{ padding: '1.5rem', background: T.amberLight, border: `1px solid ${T.amberBorder}`, marginTop: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-        <span style={{ fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: T.amber, fontFamily: "'DM Mono', monospace" }}>
-          City directory
-        </span>
-        <span style={{ fontSize: '0.7rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>
-          {allCities.length} cities
-        </span>
+        <span style={{ fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: T.amber, fontFamily: "'DM Mono', monospace" }}>City directory</span>
+        <span style={{ fontSize: '0.7rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>{allCities.length} cities</span>
       </div>
-
-      <input
-        value={query}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
-        placeholder="Search city…"
-        style={{ ...sInput(), marginBottom: 0 }}
-      />
-
+      <input value={query} onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} placeholder="Search city…" style={{ ...sInput(), marginBottom: 0 }} />
       <div className="city-lookup-list">
         {filtered.length === 0 ? (
-          <div style={{ padding: '0.75rem 1rem', fontSize: '0.82rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>
-            No cities found.
-          </div>
+          <div style={{ padding: '0.75rem 1rem', fontSize: '0.82rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>No cities found.</div>
         ) : filtered.map((city, i) => (
-          <div
-            key={i}
-            className="city-lookup-item"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '0.6rem 0.9rem',
-              borderBottom: i < filtered.length - 1 ? `1px solid ${T.border}` : 'none',
-              cursor: 'pointer',
-              transition: 'background 0.15s',
-            }}
+          <div key={i} className="city-lookup-item"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.9rem', borderBottom: i < filtered.length - 1 ? `1px solid ${T.border}` : 'none', cursor: 'pointer', transition: 'background 0.15s' }}
             onClick={() => onSelect(city)}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <span style={{ fontSize: '1rem' }}>{city.emoji}</span>
               <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 600, color: T.green, fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
-                  {city.name}
-                </div>
-                <div style={{ fontSize: '0.68rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>
-                  {city.lat}°, {city.lon}°
-                </div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 600, color: T.green, fontFamily: "'Cormorant Garamond', Georgia, serif" }}>{city.name}</div>
+                <div style={{ fontSize: '0.68rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>{city.lat}°, {city.lon}°</div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-              <a
-                href={googleMapsUrl(city.lat, city.lon)}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Open in Google Maps"
+              <a href={googleMapsUrl(city.lat, city.lon)} target="_blank" rel="noopener noreferrer" title="Open in Google Maps"
                 onClick={(e) => e.stopPropagation()}
-                style={{
-                  fontSize: '0.68rem', color: T.amber, fontFamily: "'DM Mono', monospace",
-                  textDecoration: 'none', padding: '0.2rem 0.45rem',
-                  border: `1px solid ${T.amberBorder}`, lineHeight: 1.4,
-                  transition: 'background 0.15s',
-                }}
-              >
+                style={{ fontSize: '0.68rem', color: T.amber, fontFamily: "'DM Mono', monospace", textDecoration: 'none', padding: '0.2rem 0.45rem', border: `1px solid ${T.amberBorder}`, lineHeight: 1.4 }}>
                 map ↗
               </a>
-              <button
-                onClick={(e) => { e.stopPropagation(); onSelect(city); }}
-                style={{
-                  fontSize: '0.68rem', padding: '0.2rem 0.55rem',
-                  background: T.green, color: T.cream,
-                  border: 'none', cursor: 'pointer', fontFamily: "'DM Mono', monospace",
-                  letterSpacing: '0.1em', lineHeight: 1.4,
-                }}
-              >
+              <button onClick={(e) => { e.stopPropagation(); onSelect(city); }}
+                style={{ fontSize: '0.68rem', padding: '0.2rem 0.55rem', background: T.green, color: T.cream, border: 'none', cursor: 'pointer', fontFamily: "'DM Mono', monospace", letterSpacing: '0.1em', lineHeight: 1.4 }}>
                 use
               </button>
             </div>
           </div>
         ))}
       </div>
-
       <div style={{ height: 1, background: T.amberBorder, margin: '1rem 0 0.85rem' }} />
-
-      <p style={{ fontSize: '0.72rem', letterSpacing: '0.18em', textTransform: 'uppercase' as const, color: T.textMuted, fontFamily: "'DM Mono', monospace", marginBottom: '0.6rem' }}>
-        Add a city
-      </p>
-
-      {addError && (
-        <p style={{ fontSize: '0.75rem', color: T.errorText, fontFamily: "'DM Mono', monospace", marginBottom: '0.5rem' }}>
-          ⚠ {addError}
-        </p>
-      )}
-
+      <p style={{ fontSize: '0.72rem', letterSpacing: '0.18em', textTransform: 'uppercase' as const, color: T.textMuted, fontFamily: "'DM Mono', monospace", marginBottom: '0.6rem' }}>Add a city</p>
+      {addError && <p style={{ fontSize: '0.75rem', color: T.errorText, fontFamily: "'DM Mono', monospace", marginBottom: '0.5rem' }}>⚠ {addError}</p>}
       <div className="city-add-row">
         <div>
           <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: T.textMuted, marginBottom: '0.35rem', fontFamily: "'DM Mono', monospace" }}>Name</label>
@@ -523,18 +551,8 @@ function CityLookup({ userCities, onSelect, onAddCity }: CityLookupProps) {
           <label style={{ display: 'block', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: T.textMuted, marginBottom: '0.35rem', fontFamily: "'DM Mono', monospace" }}>Lon</label>
           <input value={newLon} onChange={(e: ChangeEvent<HTMLInputElement>) => setNewLon(e.target.value)} placeholder="-74.07" style={sInput(!!newLon && !isValidLon(newLon))} />
         </div>
-        <button
-          onClick={handleAddCity}
-          style={{
-            padding: '0.65rem 1rem',
-            background: T.amber, color: T.green,
-            border: 'none', cursor: 'pointer',
-            fontSize: '0.72rem', letterSpacing: '0.15em', textTransform: 'uppercase' as const,
-            fontWeight: 700, fontFamily: "'DM Mono', monospace",
-            alignSelf: 'flex-end',
-            whiteSpace: 'nowrap',
-          }}
-        >
+        <button onClick={handleAddCity}
+          style={{ padding: '0.65rem 1rem', background: T.amber, color: T.green, border: 'none', cursor: 'pointer', fontSize: '0.72rem', letterSpacing: '0.15em', textTransform: 'uppercase' as const, fontWeight: 700, fontFamily: "'DM Mono', monospace", alignSelf: 'flex-end', whiteSpace: 'nowrap' }}>
           + Add
         </button>
       </div>
@@ -542,12 +560,8 @@ function CityLookup({ userCities, onSelect, onAddCity }: CityLookupProps) {
   );
 }
 
-// ─── useQuote hook ──────────────────────────────────────────────────────────
-function useQuote(
-  form: FormState,
-  address: `0x${string}` | undefined,
-  publicClient: ReturnType<typeof usePublicClient>
-) {
+// ─── useQuote ─────────────────────────────────────────────────────────────────
+function useQuote(form: FormState, address: `0x${string}` | undefined, publicClient: ReturnType<typeof usePublicClient>) {
   const [requestId, setRequestId]         = useState<string>('');
   const [isLoading, setIsLoading]         = useState(false);
   const [error, setError]                 = useState<ParsedContractError | null>(null);
@@ -577,10 +591,7 @@ function useQuote(
     if (isQuoteSuccess && quoteReceipt) {
       for (const log of quoteReceipt.logs) {
         if (log.address.toLowerCase() === CONTRACTS.PREMIUM_CONSUMER.toLowerCase()) {
-          if (log.topics && log.topics.length >= 2) {
-            setRequestId(log.topics[1] as string);
-            return;
-          }
+          if (log.topics && log.topics.length >= 2) { setRequestId(log.topics[1] as string); return; }
         }
       }
       setError({ title: 'Request ID not found', detail: 'The transaction succeeded but the request ID could not be extracted from the logs. Please try again.', errorName: null });
@@ -588,27 +599,13 @@ function useQuote(
   }, [isQuoteSuccess, quoteReceipt]);
 
   useEffect(() => { if (isQuotePending) setIsLoading(true); }, [isQuotePending]);
-
-  useEffect(() => {
-    if (quoteWagmiError) {
-      setError(parseContractError(quoteWagmiError));
-      setIsLoading(false);
-    }
-  }, [quoteWagmiError]);
-
-  useEffect(() => {
-    if (quoteReceiptError) {
-      setError(parseContractError(quoteReceiptError));
-      setIsLoading(false);
-    }
-  }, [quoteReceiptError]);
-
+  useEffect(() => { if (quoteWagmiError) { setError(parseContractError(quoteWagmiError)); setIsLoading(false); } }, [quoteWagmiError]);
+  useEffect(() => { if (quoteReceiptError) { setError(parseContractError(quoteReceiptError)); setIsLoading(false); } }, [quoteReceiptError]);
   useEffect(() => { if (isFulfilled) setIsLoading(false); }, [isFulfilled]);
 
   const request = useCallback(async () => {
     if (!address || !publicClient) return;
     setError(null); setSimulation(null); setTxHash(null); setRequestId(''); resetQuote();
-
     try {
       const block      = await publicClient.getBlock({ blockTag: 'latest' });
       const blockTime  = Number(block.timestamp);
@@ -626,18 +623,11 @@ function useQuote(
         notional:    parseEther(form.notional),
       };
 
-      await publicClient.simulateContract({
-        account: address, address: CONTRACTS.WEATHER_OPTION,
-        abi: WEATHER_OPTION_ABI, functionName: 'requestPremiumQuote', args: [params],
-      });
-
+      await publicClient.simulateContract({ account: address, address: CONTRACTS.WEATHER_OPTION, abi: WEATHER_OPTION_ABI, functionName: 'requestPremiumQuote', args: [params] });
       setSimulation({ success: true });
 
       requestQuote(
-        {
-          address: CONTRACTS.WEATHER_OPTION, abi: WEATHER_OPTION_ABI,
-          functionName: 'requestPremiumQuote', args: [params], gas: BigInt(2000000),
-        },
+        { address: CONTRACTS.WEATHER_OPTION, abi: WEATHER_OPTION_ABI, functionName: 'requestPremiumQuote', args: [params], gas: BigInt(2000000) },
         {
           onSuccess: (hash) => setTxHash(hash),
           onError:   (err)  => { setError(parseContractError(err)); setIsLoading(false); },
@@ -657,20 +647,18 @@ function useQuote(
   return { request, isLoading, isFulfilled, premium, requestId, error, txHash, simulationResult, reset };
 }
 
-// ─── Minor components ───────────────────────────────────────────────────────
+// ─── Minor components ────────────────────────────────────────────────────────
 function Spinner({ color = T.amber }: { color?: string }) {
   return <div style={{ ...css.spinnerRing, borderTopColor: color }} />;
 }
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <span style={css.label}>{children}</span>;
 }
-
 function Divider() {
   return <div style={css.divider} />;
 }
 
-// ─── Main component ─────────────────────────────────────────────────────────
+// ─── Main component ──────────────────────────────────────────────────────────
 export default function CreateOptionFlow() {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
@@ -688,38 +676,46 @@ export default function CreateOptionFlow() {
     customLon: '',
   });
 
-  const [userCities, setUserCities] = useState<CityEntry[]>([]);
+  const [userCities, setUserCities]     = useState<CityEntry[]>([]);
   const [showCityLookup, setShowCityLookup] = useState(false);
+  const [state, dispatch]               = useReducer(reducer, initialState);
+  const quote                           = useQuote(form, address, publicClient);
 
-  const [state, dispatch] = useReducer(reducer, initialState);
-  const quote = useQuote(form, address, publicClient);
+  // ── Contract reads ───────────────────────────────────────────────────────
+  const { data: vaultLiquidity }  = useReadContract({ address: CONTRACTS.VAULT,           abi: VAULT_ABI,           functionName: 'availableLiquidity', query: { enabled: mounted } });
+  const { data: reinsuranceBps }  = useReadContract({ address: CONTRACTS.VAULT,           abi: VAULT_ABI,           functionName: 'reinsuranceYieldBps', query: { enabled: mounted } });
+  const { data: poolCapacity }    = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'availableCapacity',  query: { enabled: mounted } });
+  const { data: poolYield }       = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'accruedYield',       query: { enabled: mounted } });
+  const { data: minNotional }     = useReadContract({ address: CONTRACTS.WEATHER_OPTION,  abi: WEATHER_OPTION_ABI,  functionName: 'minNotional',         query: { enabled: mounted } });
+  const { data: minPremium }      = useReadContract({ address: CONTRACTS.WEATHER_OPTION,  abi: WEATHER_OPTION_ABI,  functionName: 'minPremium',          query: { enabled: mounted } });
+  const { data: protocolFeeBps }  = useReadContract({ address: CONTRACTS.WEATHER_OPTION,  abi: WEATHER_OPTION_ABI,  functionName: 'protocolFeeBps',      query: { enabled: mounted } });
 
-  const { data: vaultLiquidity } = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'availableLiquidity', query: { enabled: mounted } });
-  const { data: minNotional }    = useReadContract({ address: CONTRACTS.WEATHER_OPTION, abi: WEATHER_OPTION_ABI, functionName: 'minNotional',    query: { enabled: mounted } });
-  const { data: minPremium }     = useReadContract({ address: CONTRACTS.WEATHER_OPTION, abi: WEATHER_OPTION_ABI, functionName: 'minPremium',     query: { enabled: mounted } });
-  const { data: protocolFeeBps } = useReadContract({ address: CONTRACTS.WEATHER_OPTION, abi: WEATHER_OPTION_ABI, functionName: 'protocolFeeBps', query: { enabled: mounted } });
-
+  // ── Derived values ───────────────────────────────────────────────────────
   const maxPayout   = useMemo(() => parseEther(form.notional) * BigInt(form.spread), [form.notional, form.spread]);
   const protocolFee = useMemo(() => quote.premium && protocolFeeBps ? (quote.premium as bigint) * (protocolFeeBps as bigint) / BigInt(10000) : BigInt(0), [quote.premium, protocolFeeBps]);
   const totalCost   = useMemo(() => quote.premium ? (quote.premium as bigint) + protocolFee : BigInt(0), [quote.premium, protocolFee]);
+
   const isPremiumValid = useMemo(() =>
     quote.premium !== undefined && minPremium !== undefined
-      ? (quote.premium as bigint) >= (minPremium as bigint)
-      : true,
+      ? (quote.premium as bigint) >= (minPremium as bigint) : true,
     [quote.premium, minPremium]
   );
-  const isPremiumZero = quote.premium !== undefined && (quote.premium as bigint) === BigInt(0);
+  const isPremiumZero  = quote.premium !== undefined && (quote.premium as bigint) === BigInt(0);
+  const hasEnoughLiquidity = vaultLiquidity && maxPayout <= (vaultLiquidity as bigint);
+  const showShortDurationWarning = form.days < 3;
 
+  // ── Write contract ───────────────────────────────────────────────────────
   const { writeContract: createOption, data: createHash, error: createWagmiError, isPending: isCreatePending } = useWriteContract();
   const { isSuccess: isCreateSuccess } = useWaitForTransactionReceipt({ hash: createHash });
 
+  // ── Step transitions ─────────────────────────────────────────────────────
   useEffect(() => {
     if (quote.isLoading) {
-      dispatch({ type: 'SET_STEP',        payload: 'quote-loading' });
+      dispatch({ type: 'SET_STEP', payload: 'quote-loading' });
       dispatch({ type: 'SET_QUOTE_ERROR', payload: null });
     } else if (quote.error) {
       dispatch({ type: 'SET_QUOTE_ERROR', payload: quote.error });
-      dispatch({ type: 'SET_STEP',        payload: 'form' });
+      dispatch({ type: 'SET_STEP', payload: 'form' });
     } else if (quote.isFulfilled && quote.premium !== undefined) {
       dispatch({ type: 'SET_STEP',       payload: 'review' });
       dispatch({ type: 'SET_REQUEST_ID', payload: quote.requestId });
@@ -754,15 +750,14 @@ export default function CreateOptionFlow() {
 
   useEffect(() => setMounted(true), []);
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleRequestQuote = useCallback(() => {
     if (form.isCustomLocation) {
       if (!form.customLat || !form.customLon) {
-        dispatch({ type: 'SET_QUOTE_ERROR', payload: { title: 'Missing coordinates', detail: 'Please enter both latitude and longitude for your custom location.', errorName: null } });
-        return;
+        dispatch({ type: 'SET_QUOTE_ERROR', payload: { title: 'Missing coordinates', detail: 'Please enter both latitude and longitude for your custom location.', errorName: null } }); return;
       }
       if (!isValidLat(form.customLat) || !isValidLon(form.customLon)) {
-        dispatch({ type: 'SET_QUOTE_ERROR', payload: { title: 'Invalid coordinates', detail: 'Latitude must be between −90 and 90. Longitude must be between −180 and 180.', errorName: null } });
-        return;
+        dispatch({ type: 'SET_QUOTE_ERROR', payload: { title: 'Invalid coordinates', detail: 'Latitude must be between −90 and 90. Longitude must be between −180 and 180.', errorName: null } }); return;
       }
     }
     dispatch({ type: 'SET_QUOTE_ERROR', payload: null });
@@ -773,56 +768,22 @@ export default function CreateOptionFlow() {
     if (!quote.requestId || !totalCost) return;
     dispatch({ type: 'SET_CREATE_ERROR', payload: null });
     createOption(
-      {
-        address: CONTRACTS.WEATHER_OPTION, abi: WEATHER_OPTION_ABI,
-        functionName: 'createOptionWithQuote',
-        args: [quote.requestId as `0x${string}`],
-        value: totalCost,
-      },
-      {
-        onError: (err) => {
-          dispatch({ type: 'SET_CREATE_ERROR', payload: parseContractError(err) });
-          dispatch({ type: 'SET_STEP',         payload: 'review' });
-        },
-      }
+      { address: CONTRACTS.WEATHER_OPTION, abi: WEATHER_OPTION_ABI, functionName: 'createOptionWithQuote', args: [quote.requestId as `0x${string}`], value: totalCost },
+      { onError: (err) => { dispatch({ type: 'SET_CREATE_ERROR', payload: parseContractError(err) }); dispatch({ type: 'SET_STEP', payload: 'review' }); } }
     );
   }, [quote.requestId, totalCost, createOption]);
 
-  const handleCancelQuote = useCallback(() => {
-    quote.reset();
-    dispatch({ type: 'SET_STEP', payload: 'form' });
-  }, [quote]);
+  const handleCancelQuote = useCallback(() => { quote.reset(); dispatch({ type: 'SET_STEP', payload: 'form' }); }, [quote]);
 
   const handleRandomize = useCallback(() => {
     const pool = [...CITY_DIRECTORY, ...userCities];
     const city = pool[Math.floor(Math.random() * pool.length)];
-    setForm(prev => ({
-      ...prev,
-      isCustomLocation: true,
-      customLat: city.lat,
-      customLon: city.lon,
-    }));
+    setForm(prev => ({ ...prev, isCustomLocation: true, customLat: city.lat, customLon: city.lon }));
     setShowCityLookup(false);
   }, [userCities]);
 
-  const handleCitySelect = useCallback((city: CityEntry) => {
-    setForm(prev => ({
-      ...prev,
-      isCustomLocation: true,
-      customLat: city.lat,
-      customLon: city.lon,
-    }));
-    setShowCityLookup(false);
-  }, []);
-
-  const handleAddUserCity = useCallback((city: CityEntry) => {
-    setUserCities(prev => {
-      const exists = prev.some(c => c.name.toLowerCase() === city.name.toLowerCase());
-      return exists ? prev : [...prev, city];
-    });
-  }, []);
-
-  const hasEnoughLiquidity = vaultLiquidity && maxPayout <= (vaultLiquidity as bigint);
+  const handleCitySelect  = useCallback((city: CityEntry) => { setForm(prev => ({ ...prev, isCustomLocation: true, customLat: city.lat, customLon: city.lon })); setShowCityLookup(false); }, []);
+  const handleAddUserCity = useCallback((city: CityEntry) => { setUserCities(prev => { const exists = prev.some(c => c.name.toLowerCase() === city.name.toLowerCase()); return exists ? prev : [...prev, city]; }); }, []);
 
   const handleNumberChange = (field: 'days' | 'strike' | 'spread') => (e: ChangeEvent<HTMLInputElement>) => {
     const num = Number(e.target.value);
@@ -831,7 +792,7 @@ export default function CreateOptionFlow() {
 
   if (!mounted) return null;
 
-  // ── Disconnected ─────────────────────────────────────────────────────────
+  // ── Disconnected ──────────────────────────────────────────────────────────
   if (!isConnected) {
     return (
       <div style={{ ...css.wrap, padding: '5rem 2.5rem', textAlign: 'center' }}>
@@ -846,7 +807,7 @@ export default function CreateOptionFlow() {
     );
   }
 
-  // ── Quote loading ────────────────────────────────────────────────────────
+  // ── Quote loading ─────────────────────────────────────────────────────────
   if (state.step === 'quote-loading') {
     return (
       <div style={css.wrap}>
@@ -879,13 +840,12 @@ export default function CreateOptionFlow() {
     );
   }
 
-  // ── Form ────────────────────────────────────────────────────────────────
+  // ── Form ──────────────────────────────────────────────────────────────────
   if (state.step === 'form') {
     const selectedCoord = form.isCustomLocation
       ? form.customLat && form.customLon ? `${form.customLat}°, ${form.customLon}°` : '—'
       : `${LOCATIONS[form.locationIdx].lat}°, ${LOCATIONS[form.locationIdx].lon}°`;
 
-    const showShortDurationWarning = form.days < 3;
     const minPremiumStr: string = minPremium ? formatEther(minPremium as bigint) : '0.05';
 
     return (
@@ -896,25 +856,15 @@ export default function CreateOptionFlow() {
           <h2 style={css.pageTitle}>Create weather protection</h2>
           <p style={css.pageSub}>Configure your option parameters below</p>
 
-          {vaultLiquidity && (
-            <div className="cof-vault-banner" style={sVaultBanner(!!hasEnoughLiquidity)}>
-              <div>
-                <span style={css.vaultLabel}>Vault available liquidity</span>
-                <div style={css.vaultValue}>{formatEther(vaultLiquidity as bigint)} ETH</div>
-              </div>
-              <div>
-                <span style={css.vaultLabel}>Your option needs</span>
-                <div style={{ ...css.vaultValue, color: hasEnoughLiquidity ? T.successText : T.errorText }}>
-                  {formatEther(maxPayout)} ETH
-                </div>
-              </div>
-              {!hasEnoughLiquidity && (
-                <p style={{ width: '100%', fontSize: '0.78rem', color: T.errorText, fontFamily: "'DM Mono', monospace" }}>
-                  Insufficient liquidity — reduce notional or spread.
-                </p>
-              )}
-            </div>
-          )}
+          {/* Liquidity panels — vault + reinsurance side by side */}
+          <SectionLabel>Protocol liquidity</SectionLabel>
+          <LiquidityPanels
+            vaultLiquidity={vaultLiquidity as bigint | undefined}
+            poolCapacity={poolCapacity as bigint | undefined}
+            poolYield={poolYield as bigint | undefined}
+            reinsuranceBps={reinsuranceBps as bigint | undefined}
+            maxPayout={maxPayout}
+          />
 
           <SectionLabel>Protection type</SectionLabel>
           <div className="cof-type-grid">
@@ -935,30 +885,12 @@ export default function CreateOptionFlow() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
             <SectionLabel>Location</SectionLabel>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.85rem' }}>
-              <button
-                onClick={handleRandomize}
-                title="Pick a random city"
-                style={{
-                  padding: '0.3rem 0.7rem', fontSize: '0.7rem', letterSpacing: '0.15em',
-                  textTransform: 'uppercase', fontFamily: "'DM Mono', monospace",
-                  background: 'transparent', color: T.textMuted,
-                  border: `1px solid ${T.border}`, cursor: 'pointer',
-                  transition: 'border-color 0.2s, color 0.2s',
-                }}
-              >
+              <button onClick={handleRandomize} title="Pick a random city"
+                style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: "'DM Mono', monospace", background: 'transparent', color: T.textMuted, border: `1px solid ${T.border}`, cursor: 'pointer' }}>
                 🎲 Random
               </button>
-              <button
-                onClick={() => setShowCityLookup(v => !v)}
-                style={{
-                  padding: '0.3rem 0.7rem', fontSize: '0.7rem', letterSpacing: '0.15em',
-                  textTransform: 'uppercase', fontFamily: "'DM Mono', monospace",
-                  background: showCityLookup ? T.amber : 'transparent',
-                  color: showCityLookup ? T.green : T.amber,
-                  border: `1px solid ${showCityLookup ? T.amber : T.amberBorder}`,
-                  cursor: 'pointer', transition: 'all 0.2s',
-                }}
-              >
+              <button onClick={() => setShowCityLookup(v => !v)}
+                style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: "'DM Mono', monospace", background: showCityLookup ? T.amber : 'transparent', color: showCityLookup ? T.green : T.amber, border: `1px solid ${showCityLookup ? T.amber : T.amberBorder}`, cursor: 'pointer' }}>
                 🔍 City lookup
               </button>
             </div>
@@ -979,13 +911,7 @@ export default function CreateOptionFlow() {
             </button>
           </div>
 
-          {showCityLookup && (
-            <CityLookup
-              userCities={userCities}
-              onSelect={handleCitySelect}
-              onAddCity={handleAddUserCity}
-            />
-          )}
+          {showCityLookup && <CityLookup userCities={userCities} onSelect={handleCitySelect} onAddCity={handleAddUserCity} />}
 
           {form.isCustomLocation && !showCityLookup && (
             <div style={css.customPanel}>
@@ -1008,12 +934,8 @@ export default function CreateOptionFlow() {
           <p style={css.selectedCoord}>
             Selected: <span style={css.selectedCoordVal}>{selectedCoord}</span>
             {form.isCustomLocation && form.customLat && form.customLon && (
-              <a
-                href={`https://www.google.com/maps?q=${form.customLat},${form.customLon}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ marginLeft: '0.75rem', fontSize: '0.72rem', color: T.amber, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
-              >
+              <a href={`https://www.google.com/maps?q=${form.customLat},${form.customLon}`} target="_blank" rel="noopener noreferrer"
+                style={{ marginLeft: '0.75rem', fontSize: '0.72rem', color: T.amber, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}>
                 view on map ↗
               </a>
             )}
@@ -1030,22 +952,26 @@ export default function CreateOptionFlow() {
             ]).map(({ field, label, min, max }) => (
               <div key={field} style={css.paramField}>
                 <label style={css.inputLabel}>{label}</label>
-                <input
-                  type="number" min={min} max={max} value={form[field]}
-                  onChange={handleNumberChange(field)}
-                  style={sInput(field === 'days' && showShortDurationWarning)}
-                />
+                <input type="number" min={min} max={max} value={form[field]} onChange={handleNumberChange(field)}
+                  style={sInput(field === 'days' && showShortDurationWarning)} />
               </div>
             ))}
             <div style={css.paramField}>
               <label style={css.inputLabel}>Notional (ETH / mm)</label>
-              <input
-                type="text" value={form.notional}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, notional: e.target.value })}
-                style={sInput()}
-              />
+              <input type="text" value={form.notional} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, notional: e.target.value })} style={sInput()} />
             </div>
           </div>
+
+          {/* Historical rainfall chart — updates on location change, overlays live on strike/spread/days */}
+          <SectionLabel>Historical rainfall context</SectionLabel>
+          <RainfallChart
+            latitude={form.isCustomLocation ? form.customLat : LOCATIONS[form.locationIdx].lat}
+            longitude={form.isCustomLocation ? form.customLon : LOCATIONS[form.locationIdx].lon}
+            strike={form.strike}
+            spread={form.spread}
+            days={form.days}
+            isCall={form.type === OptionType.CALL}
+          />
 
           {showShortDurationWarning && (
             <InfoBox variant="warn" title="Short duration">
@@ -1068,16 +994,10 @@ export default function CreateOptionFlow() {
           </div>
 
           {state.quoteError && (
-            <ErrorBanner
-              error={state.quoteError}
-              onDismiss={() => dispatch({ type: 'SET_QUOTE_ERROR', payload: null })}
-            />
+            <ErrorBanner error={state.quoteError} onDismiss={() => dispatch({ type: 'SET_QUOTE_ERROR', payload: null })} />
           )}
-
           {state.simulationSuccess && !state.quoteError && (
-            <InfoBox variant="success" title="Pre-flight check passed">
-              Simulation successful — confirm in your wallet.
-            </InfoBox>
+            <InfoBox variant="success" title="Pre-flight check passed">Simulation successful — confirm in your wallet.</InfoBox>
           )}
 
           <button
@@ -1092,8 +1012,13 @@ export default function CreateOptionFlow() {
     );
   }
 
-  // ── Review ───────────────────────────────────────────────────────────────
+  // ── Review ────────────────────────────────────────────────────────────────
   if (state.step === 'review' && quote.premium !== undefined) {
+    const isPoolActive = reinsuranceBps !== undefined && (reinsuranceBps as bigint) > BigInt(0);
+    const yieldRouted  = isPoolActive && protocolFee > BigInt(0)
+      ? protocolFee * (reinsuranceBps as bigint) / BigInt(10000)
+      : BigInt(0);
+
     return (
       <div style={css.wrap}>
         <style>{RESPONSIVE}</style>
@@ -1109,9 +1034,15 @@ export default function CreateOptionFlow() {
               <span style={css.reviewValue}>{formatEther(quote.premium as bigint)} ETH</span>
             </div>
             <div className="cof-review-row">
-              <span style={css.reviewLabel}>Protocol fee (1%)</span>
+              <span style={css.reviewLabel}>Protocol fee ({protocolFeeBps ? Number(protocolFeeBps as bigint) / 100 : 1}%)</span>
               <span style={css.reviewValue}>{formatEther(protocolFee)} ETH</span>
             </div>
+            {isPoolActive && yieldRouted > BigInt(0) && (
+              <div className="cof-review-row" style={{ opacity: 0.75 }}>
+                <span style={{ ...css.reviewLabel, fontSize: '0.8rem', color: T.teal }}>↳ Routed to reinsurance pool</span>
+                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.82rem', color: T.teal }}>{formatEther(yieldRouted)} ETH</span>
+              </div>
+            )}
             <div className="cof-review-row-last">
               <span style={{ fontWeight: 700, fontSize: '1rem', color: T.green }}>Total to pay</span>
               <span style={css.reviewTotal}>{formatEther(totalCost)} ETH</span>
@@ -1137,41 +1068,18 @@ export default function CreateOptionFlow() {
           </div>
 
           {isPremiumZero && (
-            <ErrorBanner
-              error={{
-                title: 'Zero premium returned',
-                detail: form.type === OptionType.CALL
-                  ? 'The oracle returned a premium of zero — your strike is likely above the forecast rainfall (deeply out of the money). Try a lower strike or a shorter spread.'
-                  : 'The oracle returned a premium of zero — your strike is likely below the forecast rainfall (deeply out of the money). Try a higher strike or a shorter spread.',
-                errorName: 'InvalidPremium',
-              }}
-            />
+            <ErrorBanner error={{ title: 'Zero premium returned', detail: form.type === OptionType.CALL ? 'The oracle returned a premium of zero — your strike is likely above the forecast rainfall (deeply out of the money). Try a lower strike or a shorter spread.' : 'The oracle returned a premium of zero — your strike is likely below the forecast rainfall (deeply out of the money). Try a higher strike or a shorter spread.', errorName: 'InvalidPremium' }} />
           )}
-
           {!isPremiumZero && !isPremiumValid && (
-            <ErrorBanner
-              error={{
-                title: 'Premium below minimum',
-                detail: `The calculated premium (${formatEther(quote.premium as bigint)} ETH) is below the protocol minimum of ${minPremium ? formatEther(minPremium as bigint) : '0.05'} ETH. Try a longer duration (at least 3–5 days) or a larger notional.`,
-                errorName: 'PremiumBelowMinimum',
-              }}
-            />
+            <ErrorBanner error={{ title: 'Premium below minimum', detail: `The calculated premium (${formatEther(quote.premium as bigint)} ETH) is below the protocol minimum of ${minPremium ? formatEther(minPremium as bigint) : '0.05'} ETH. Try a longer duration (at least 3–5 days) or a larger notional.`, errorName: 'PremiumBelowMinimum' }} />
           )}
-
           {state.createError && (
-            <ErrorBanner
-              error={state.createError}
-              onDismiss={() => dispatch({ type: 'SET_CREATE_ERROR', payload: null })}
-            />
+            <ErrorBanner error={state.createError} onDismiss={() => dispatch({ type: 'SET_CREATE_ERROR', payload: null })} />
           )}
 
           <div className="cof-btn-row">
             <button onClick={handleCancelQuote} style={css.cancelBtn}>← Back</button>
-            <button
-              onClick={handleCreateOption}
-              disabled={isCreatePending || !isPremiumValid}
-              style={sConfirmBtn(isCreatePending || !isPremiumValid)}
-            >
+            <button onClick={handleCreateOption} disabled={isCreatePending || !isPremiumValid} style={sConfirmBtn(isCreatePending || !isPremiumValid)}>
               {isCreatePending ? 'Confirming…' : 'Confirm & pay →'}
             </button>
           </div>
@@ -1180,7 +1088,7 @@ export default function CreateOptionFlow() {
     );
   }
 
-  // ── Creating ─────────────────────────────────────────────────────────────
+  // ── Creating ──────────────────────────────────────────────────────────────
   if (state.step === 'creating') {
     return (
       <div style={css.wrap}>
@@ -1195,7 +1103,7 @@ export default function CreateOptionFlow() {
     );
   }
 
-  // ── Success ──────────────────────────────────────────────────────────────
+  // ── Success ───────────────────────────────────────────────────────────────
   if (state.step === 'success') {
     return (
       <div style={css.wrap}>
@@ -1210,9 +1118,7 @@ export default function CreateOptionFlow() {
               {createHash.slice(0, 10)}…{createHash.slice(-8)}
             </p>
           )}
-          <p style={{ fontSize: '0.78rem', color: T.textMuted, letterSpacing: '0.1em' }}>
-            Returning to form in a moment…
-          </p>
+          <p style={{ fontSize: '0.78rem', color: T.textMuted, letterSpacing: '0.1em' }}>Returning to form in a moment…</p>
         </div>
       </div>
     );

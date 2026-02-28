@@ -1,32 +1,42 @@
 'use client';
 
 import { useState, useEffect, useMemo, CSSProperties } from 'react';
-import { useAccount, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import {
+  useAccount, useReadContract, useReadContracts,
+  useWriteContract, useWaitForTransactionReceipt,
+} from 'wagmi';
 import { formatEther, parseEther } from 'viem';
-import { VAULT_ABI, WETH_ABI, WEATHER_OPTION_ABI, CONTRACTS } from '../lib/contract';
+import {
+  VAULT_ABI, WETH_ABI, WEATHER_OPTION_ABI,
+  REINSURANCE_POOL_ABI, CONTRACTS,
+} from '../lib/contract';
 import type { Abi } from 'viem';
 
-// ─── Design tokens (unchanged from existing Bruma palette) ──────────────────
+// ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
-  cream:        '#f4ede0',
-  green:        '#1c2b1e',
-  greenMid:     '#2d4a30',
-  muted:        '#4a5c4b',
-  textMuted:    '#6b6560',
-  amber:        '#c9913d',
-  amberLight:   'rgba(201,145,61,0.08)',
-  amberBorder:  'rgba(201,145,61,0.2)',
-  border:       'rgba(28,43,30,0.10)',
-  white:        '#ffffff',
-  successBg:    '#f0f7f1',
-  successBorder:'#a8c9ac',
-  successText:  '#14532d',
-  errorBg:      '#fef2f0',
-  errorBorder:  '#e8b4ad',
-  errorText:    '#7c2d12',
-  warnBg:       '#fdfaee',
-  warnBorder:   '#e8d5a3',
-  warnText:     '#78350f',
+  cream:         '#f4ede0',
+  green:         '#1c2b1e',
+  greenMid:      '#2d4a30',
+  muted:         '#4a5c4b',
+  textMuted:     '#6b6560',
+  amber:         '#c9913d',
+  amberLight:    'rgba(201,145,61,0.08)',
+  amberBorder:   'rgba(201,145,61,0.2)',
+  teal:          '#1a6b5e',
+  tealLight:     'rgba(26,107,94,0.07)',
+  tealBorder:    'rgba(26,107,94,0.20)',
+  tealMid:       '#21867a',
+  border:        'rgba(28,43,30,0.10)',
+  white:         '#ffffff',
+  successBg:     '#f0f7f1',
+  successBorder: '#a8c9ac',
+  successText:   '#14532d',
+  errorBg:       '#fef2f0',
+  errorBorder:   '#e8b4ad',
+  errorText:     '#7c2d12',
+  warnBg:        '#fdfaee',
+  warnBorder:    '#e8d5a3',
+  warnText:      '#78350f',
 };
 
 const RESPONSIVE = `
@@ -37,24 +47,40 @@ const RESPONSIVE = `
     display: grid; grid-template-columns: repeat(3, 1fr);
     gap: 1px; background: ${T.border};
   }
-  .lp-secondary-grid {
+  .lp-pool-metrics-grid {
     display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; background: ${T.tealBorder};
+  }
+  .lp-secondary-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
     gap: 1px; background: ${T.border}; border-top: 1px solid ${T.border};
   }
   .lp-pos-grid {
     display: grid; grid-template-columns: 1fr 1fr;
     gap: 1px; background: ${T.border}; border-top: 1px solid ${T.border};
   }
+  .lp-pool-pos-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px; background: ${T.tealBorder}; border-top: 1px solid ${T.tealBorder};
+  }
   .lp-panel-grid {
     display: grid; grid-template-columns: 1fr 1fr;
     gap: 1px; background: ${T.border}; border-top: 1px solid ${T.border};
   }
+  .lp-pool-panel-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 1px; background: ${T.tealBorder}; border-top: 1px solid ${T.tealBorder};
+  }
   .lp-how-grid {
-    display: grid; grid-template-columns: repeat(2, 1fr);
+    display: grid; grid-template-columns: repeat(3, 1fr);
     gap: 1px; background: ${T.border}; border-top: 1px solid ${T.border};
   }
   .lp-secondary-cell {
-    background: ${T.cream}; padding: 1rem 2rem;
+    background: ${T.cream}; padding: 1rem 1.5rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .lp-pool-secondary-cell {
+    background: ${T.tealLight}; padding: 1rem 1.5rem;
     display: flex; justify-content: space-between; align-items: center;
   }
 
@@ -93,12 +119,13 @@ const RESPONSIVE = `
   .bar-fill { animation: barGrow 0.7s cubic-bezier(0.16,1,0.3,1) forwards; }
 
   @media (max-width: 768px) {
-    .lp-metrics-grid, .lp-secondary-grid, .lp-panel-grid { grid-template-columns: 1fr; }
-    .lp-secondary-cell { padding: 0.85rem 1.25rem; }
+    .lp-metrics-grid, .lp-pool-metrics-grid, .lp-secondary-grid, .lp-panel-grid, .lp-pool-panel-grid { grid-template-columns: 1fr; }
+    .lp-secondary-cell, .lp-pool-secondary-cell { padding: 0.85rem 1.25rem; }
     .dash-loc-grid { grid-template-columns: 1fr; }
+    .lp-how-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 560px) {
-    .lp-pos-grid, .lp-how-grid { grid-template-columns: 1fr; }
+    .lp-pos-grid, .lp-pool-pos-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 640px) {
     .dash-oi-table th:nth-child(n+4),
@@ -106,11 +133,12 @@ const RESPONSIVE = `
   }
 `;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function actionBtn(variant: 'primary' | 'amber' | 'ghost' | 'disabled'): CSSProperties {
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function actionBtn(variant: 'primary' | 'amber' | 'teal' | 'ghost' | 'disabled'): CSSProperties {
   const map = {
     primary:  { bg: T.green, color: '#f4ede0', cursor: 'pointer' },
     amber:    { bg: T.amber, color: T.green,   cursor: 'pointer' },
+    teal:     { bg: T.teal,  color: '#f4ede0', cursor: 'pointer' },
     ghost:    { bg: 'transparent', color: T.muted, cursor: 'pointer' },
     disabled: { bg: 'rgba(28,43,30,0.1)', color: T.textMuted, cursor: 'not-allowed' },
   };
@@ -150,15 +178,21 @@ function fmtCoord(lat: string, lon: string): string {
   return `${Number(lat).toFixed(2)}°, ${Number(lon).toFixed(2)}°`;
 }
 
-// Known location names for display
+function fmtLockup(seconds: bigint): string {
+  const days = Math.floor(Number(seconds) / 86400);
+  if (days > 0) return `${days}d`;
+  const hours = Math.floor(Number(seconds) / 3600);
+  return `${hours}h`;
+}
+
 const KNOWN_LOCATIONS: Record<string, string> = {
-  '6.25,-75.56':    'Medellín',
-  '51.51,-0.13':    'London',
-  '25.76,-80.19':   'Miami',
-  '40.71,-74.01':   'New York',
-  '35.68,139.69':   'Tokyo',
-  '48.86,2.35':     'Paris',
-  '-33.87,151.21':  'Sydney',
+  '6.25,-75.56':   'Medellín',
+  '51.51,-0.13':   'London',
+  '25.76,-80.19':  'Miami',
+  '40.71,-74.01':  'New York',
+  '35.68,139.69':  'Tokyo',
+  '48.86,2.35':    'Paris',
+  '-33.87,151.21': 'Sydney',
 };
 
 function resolveLocationName(lat: string, lon: string): string {
@@ -168,41 +202,53 @@ function resolveLocationName(lat: string, lon: string): string {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const css: Record<string, CSSProperties> = {
-  root:        { fontFamily: "'Cormorant Garamond', Georgia, serif" },
-  topBar:      { height: 3, background: `linear-gradient(90deg, ${T.amber}, ${T.greenMid})` },
-  wrap:        { background: T.cream, border: `1px solid ${T.border}`, overflow: 'hidden', marginBottom: '1.25rem' },
-  header:      { padding: '2rem 2.5rem', borderBottom: `1px solid ${T.border}` },
-  headerTitle: { fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', fontWeight: 400, color: T.green, lineHeight: 1.1, marginBottom: '0.3rem' },
-  headerSub:   { fontSize: '0.82rem', color: T.textMuted, letterSpacing: '0.08em', fontFamily: "'DM Mono', monospace" },
-  label:       { fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.amber, fontFamily: "'DM Mono', monospace", marginBottom: '0.5rem', display: 'block' },
-  metricCell:  { padding: '1.5rem 2rem', background: T.white },
-  metricLabel: { fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.amber, fontFamily: "'DM Mono', monospace", marginBottom: '0.4rem', display: 'block' },
-  metricValue: { fontSize: 'clamp(1.3rem, 2.5vw, 1.8rem)', fontWeight: 400, color: T.green, fontFamily: "'Cormorant Garamond', Georgia, serif" },
-  metricSub:   { fontSize: '0.72rem', color: T.textMuted, fontFamily: "'DM Mono', monospace", marginTop: '0.2rem' },
+  root:           { fontFamily: "'Cormorant Garamond', Georgia, serif" },
+  topBar:         { height: 3, background: `linear-gradient(90deg, ${T.amber}, ${T.greenMid})` },
+  tealTopBar:     { height: 3, background: `linear-gradient(90deg, ${T.teal}, ${T.tealMid})` },
+  wrap:           { background: T.cream, border: `1px solid ${T.border}`, overflow: 'hidden', marginBottom: '1.25rem' },
+  wrapTeal:       { background: T.cream, border: `1px solid ${T.tealBorder}`, overflow: 'hidden', marginBottom: '1.25rem' },
+  header:         { padding: '2rem 2.5rem', borderBottom: `1px solid ${T.border}` },
+  headerTeal:     { padding: '2rem 2.5rem', borderBottom: `1px solid ${T.tealBorder}` },
+  headerTitle:    { fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', fontWeight: 400, color: T.green, lineHeight: 1.1, marginBottom: '0.3rem' },
+  headerSub:      { fontSize: '0.82rem', color: T.textMuted, letterSpacing: '0.08em', fontFamily: "'DM Mono', monospace" },
+  label:          { fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.amber, fontFamily: "'DM Mono', monospace", marginBottom: '0.5rem', display: 'block' },
+  labelTeal:      { fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.teal, fontFamily: "'DM Mono', monospace", marginBottom: '0.5rem', display: 'block' },
+  metricCell:     { padding: '1.5rem 2rem', background: T.white },
+  metricCellTeal: { padding: '1.5rem 2rem', background: T.tealLight },
+  metricLabel:    { fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.amber, fontFamily: "'DM Mono', monospace", marginBottom: '0.4rem', display: 'block' },
+  metricLabelTeal:{ fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.teal, fontFamily: "'DM Mono', monospace", marginBottom: '0.4rem', display: 'block' },
+  metricValue:    { fontSize: 'clamp(1.3rem, 2.5vw, 1.8rem)', fontWeight: 400, color: T.green, fontFamily: "'Cormorant Garamond', Georgia, serif" },
+  metricSub:      { fontSize: '0.72rem', color: T.textMuted, fontFamily: "'DM Mono', monospace", marginTop: '0.2rem' },
   secondaryLabel: { fontSize: '0.72rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: T.textMuted, fontFamily: "'DM Mono', monospace" },
   secondaryValue: { fontSize: '0.95rem', fontFamily: "'DM Mono', monospace", color: T.green },
-  posCell:     { background: T.white, padding: '1.25rem 2rem' },
-  posLabel:    { fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.textMuted, fontFamily: "'DM Mono', monospace", marginBottom: '0.35rem', display: 'block' },
-  posValue:    { fontSize: '1.4rem', fontWeight: 400, color: T.green, fontFamily: "'Cormorant Garamond', Georgia, serif" },
-  panel:       { padding: '2rem 2rem 2.5rem', background: T.cream },
-  panelLabel:  { fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.amber, fontFamily: "'DM Mono', monospace", marginBottom: '0.5rem', display: 'block' },
-  panelTitle:  { fontSize: '1.2rem', fontWeight: 500, color: T.green, marginBottom: '1.25rem' },
-  noteBox:     { padding: '1rem', background: T.amberLight, border: `1px solid ${T.amberBorder}`, marginBottom: '1.25rem', fontSize: '0.82rem', color: T.muted, lineHeight: 1.7 },
-  noteTitle:   { fontSize: '0.68rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: T.amber, fontFamily: "'DM Mono', monospace", display: 'block', marginBottom: '0.5rem' },
-  input:       { width: '100%', padding: '0.75rem 1rem', border: `1.5px solid ${T.border}`, background: T.white, outline: 'none', fontSize: '1rem', color: T.green, fontFamily: "'Cormorant Garamond', Georgia, serif", boxSizing: 'border-box', marginBottom: '1rem', transition: 'border-color 0.2s' },
-  maxNote:     { fontSize: '0.72rem', color: T.textMuted, fontFamily: "'DM Mono', monospace", marginBottom: '1rem', marginTop: '-0.5rem' },
-  howCell:     { padding: '2rem', background: T.white },
-  howIcon:     { fontSize: '1.5rem', marginBottom: '0.75rem' },
-  howTitle:    { fontSize: '1rem', fontWeight: 600, color: T.green, marginBottom: '0.5rem' },
-  howDesc:     { fontSize: '0.88rem', color: T.muted, lineHeight: 1.75 },
+  posCell:        { background: T.white, padding: '1.25rem 2rem' },
+  posCellTeal:    { background: T.tealLight, padding: '1.25rem 2rem' },
+  posLabel:       { fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.textMuted, fontFamily: "'DM Mono', monospace", marginBottom: '0.35rem', display: 'block' },
+  posLabelTeal:   { fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.teal, fontFamily: "'DM Mono', monospace", marginBottom: '0.35rem', display: 'block' },
+  posValue:       { fontSize: '1.4rem', fontWeight: 400, color: T.green, fontFamily: "'Cormorant Garamond', Georgia, serif" },
+  panel:          { padding: '2rem 2rem 2.5rem', background: T.cream },
+  panelTeal:      { padding: '2rem 2rem 2.5rem', background: '#f2faf8' },
+  panelLabel:     { fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.amber, fontFamily: "'DM Mono', monospace", marginBottom: '0.5rem', display: 'block' },
+  panelLabelTeal: { fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase', color: T.teal, fontFamily: "'DM Mono', monospace", marginBottom: '0.5rem', display: 'block' },
+  panelTitle:     { fontSize: '1.2rem', fontWeight: 500, color: T.green, marginBottom: '1.25rem' },
+  noteBox:        { padding: '1rem', background: T.amberLight, border: `1px solid ${T.amberBorder}`, marginBottom: '1.25rem', fontSize: '0.82rem', color: T.muted, lineHeight: 1.7 },
+  noteBoxTeal:    { padding: '1rem', background: 'rgba(26,107,94,0.06)', border: `1px solid ${T.tealBorder}`, marginBottom: '1.25rem', fontSize: '0.82rem', color: T.muted, lineHeight: 1.7 },
+  noteTitle:      { fontSize: '0.68rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: T.amber, fontFamily: "'DM Mono', monospace", display: 'block', marginBottom: '0.5rem' },
+  noteTitleTeal:  { fontSize: '0.68rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: T.teal, fontFamily: "'DM Mono', monospace", display: 'block', marginBottom: '0.5rem' },
+  input:          { width: '100%', padding: '0.75rem 1rem', border: `1.5px solid ${T.border}`, background: T.white, outline: 'none', fontSize: '1rem', color: T.green, fontFamily: "'Cormorant Garamond', Georgia, serif", boxSizing: 'border-box', marginBottom: '1rem', transition: 'border-color 0.2s' },
+  maxNote:        { fontSize: '0.72rem', color: T.textMuted, fontFamily: "'DM Mono', monospace", marginBottom: '1rem', marginTop: '-0.5rem' },
+  howCell:        { padding: '2rem', background: T.white },
+  howIcon:        { fontSize: '1.5rem', marginBottom: '0.75rem' },
+  howTitle:       { fontSize: '1rem', fontWeight: 600, color: T.green, marginBottom: '0.5rem' },
+  howDesc:        { fontSize: '0.88rem', color: T.muted, lineHeight: 1.75 },
 };
 
 // ─── UtilizationBar ──────────────────────────────────────────────────────────
-function UtilizationBar({ bps, max = 10000 }: { bps: number; max?: number }) {
+function UtilizationBar({ bps, max = 10000, color }: { bps: number; max?: number; color?: string }) {
   const pct     = Math.min((bps / max) * 100, 100);
   const danger  = bps > 7000;
   const warning = bps > 5000;
-  const color   = danger ? T.errorText : warning ? T.warnText : T.successText;
+  const barColor = color ?? (danger ? T.errorText : warning ? T.warnText : T.successText);
 
   return (
     <div style={{ marginTop: '0.75rem' }}>
@@ -210,22 +256,15 @@ function UtilizationBar({ bps, max = 10000 }: { bps: number; max?: number }) {
         <span style={{ fontSize: '0.68rem', color: T.textMuted, fontFamily: "'DM Mono', monospace", letterSpacing: '0.12em' }}>
           UTILIZED
         </span>
-        <span style={{ fontSize: '0.72rem', fontFamily: "'DM Mono', monospace", color, fontWeight: 700 }}>
-          {(bps / 100).toFixed(1)}% / 80%
+        <span style={{ fontSize: '0.72rem', fontFamily: "'DM Mono', monospace", color: barColor, fontWeight: 700 }}>
+          {(bps / 100).toFixed(1)}%
         </span>
       </div>
       <div style={{ height: 6, background: T.border, position: 'relative', overflow: 'hidden' }}>
-        {/* 80% cap marker */}
         <div style={{ position: 'absolute', left: '80%', top: 0, bottom: 0, width: 1, background: T.amber, zIndex: 2 }} />
-        {/* Fill */}
         <div
           className="bar-fill"
-          style={{
-            height: '100%', background: color,
-            ['--bar-w' as string]: `${pct}%`,
-            width: `${pct}%`,
-            transition: 'background 0.3s',
-          }}
+          style={{ height: '100%', background: barColor, ['--bar-w' as string]: `${pct}%`, width: `${pct}%` }}
         />
       </div>
     </div>
@@ -233,11 +272,7 @@ function UtilizationBar({ bps, max = 10000 }: { bps: number; max?: number }) {
 }
 
 // ─── LocationBar ─────────────────────────────────────────────────────────────
-function LocationBar({
-  name, exposurePct, maxBps, count,
-}: {
-  name: string; exposurePct: number; maxBps: number; count: number;
-}) {
+function LocationBar({ name, exposurePct, maxBps, count }: { name: string; exposurePct: number; maxBps: number; count: number }) {
   const pct       = Math.min(exposurePct, 100);
   const nearLimit = exposurePct > (maxBps / 100) * 0.8;
   const overLimit = exposurePct > maxBps / 100;
@@ -257,16 +292,8 @@ function LocationBar({
         </div>
       </div>
       <div style={{ height: 5, background: T.border, position: 'relative', overflow: 'hidden' }}>
-        {/* 20% max marker */}
-        <div style={{ position: 'absolute', left: `${Math.min((maxBps / 100), 100)}%`, top: 0, bottom: 0, width: 1, background: T.amberBorder, zIndex: 2 }} />
-        <div
-          className="bar-fill"
-          style={{
-            height: '100%', background: color,
-            ['--bar-w' as string]: `${pct}%`,
-            width: `${pct}%`,
-          }}
-        />
+        <div style={{ position: 'absolute', left: `${Math.min(maxBps / 100, 100)}%`, top: 0, bottom: 0, width: 1, background: T.amberBorder, zIndex: 2 }} />
+        <div className="bar-fill" style={{ height: '100%', background: color, ['--bar-w' as string]: `${pct}%`, width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -274,15 +301,15 @@ function LocationBar({
 
 // ─── OpenInterestTable ───────────────────────────────────────────────────────
 type OptionData = {
-  tokenId: number;
+  tokenId:    number;
   optionType: number;
-  latitude: string;
-  longitude: string;
+  latitude:   string;
+  longitude:  string;
   expiryDate: bigint;
-  strikeMM: bigint;
-  spreadMM: bigint;
-  notional: bigint;
-  status: number;
+  strikeMM:   bigint;
+  spreadMM:   bigint;
+  notional:   bigint;
+  status:     number;
 };
 
 function OpenInterestTable({ options }: { options: OptionData[] }) {
@@ -293,19 +320,11 @@ function OpenInterestTable({ options }: { options: OptionData[] }) {
       </div>
     );
   }
-
   return (
     <div style={{ overflowX: 'auto' }}>
       <table className="dash-oi-table">
         <thead>
-          <tr>
-            <th>#</th>
-            <th>Type</th>
-            <th>Location</th>
-            <th>Strike / Spread</th>
-            <th>Max payout</th>
-            <th>Expires</th>
-          </tr>
+          <tr><th>#</th><th>Type</th><th>Location</th><th>Strike / Spread</th><th>Max payout</th><th>Expires</th></tr>
         </thead>
         <tbody>
           {options.map((o) => {
@@ -314,11 +333,7 @@ function OpenInterestTable({ options }: { options: OptionData[] }) {
             return (
               <tr key={o.tokenId} className="dash-oi-row">
                 <td style={{ color: T.textMuted }}>{o.tokenId}</td>
-                <td>
-                  <span className={`dash-pill ${isCall ? 'dash-pill-call' : 'dash-pill-put'}`}>
-                    {isCall ? '☔ Call' : '☀ Put'}
-                  </span>
-                </td>
+                <td><span className={`dash-pill ${isCall ? 'dash-pill-call' : 'dash-pill-put'}`}>{isCall ? '☔ Call' : '☀ Put'}</span></td>
                 <td>{resolveLocationName(o.latitude, o.longitude)}</td>
                 <td>{Number(o.strikeMM)}mm / {Number(o.spreadMM)}mm</td>
                 <td style={{ color: T.greenMid }}>{formatEther(maxPayout)} ETH</td>
@@ -336,70 +351,34 @@ function OpenInterestTable({ options }: { options: OptionData[] }) {
 
 // ─── RiskDashboard ────────────────────────────────────────────────────────────
 function RiskDashboard({ tvl, utilizationBps }: { tvl: bigint; utilizationBps: bigint }) {
-  // 1. Fetch active option IDs
   const { data: activeIds } = useReadContract({
     address: CONTRACTS.WEATHER_OPTION,
     abi: WEATHER_OPTION_ABI,
     functionName: 'getActiveOptions',
     query: { refetchInterval: 15000 },
   });
-
   const ids = (activeIds as bigint[] | undefined) ?? [];
 
-  // 2. Fetch vault locationExposure for each unique location key
-  //    and full option data for each token
   const optionContracts = ids.map((id) => ({
     address: CONTRACTS.WEATHER_OPTION as `0x${string}`,
-    abi: WEATHER_OPTION_ABI,
+    abi: WEATHER_OPTION_ABI as Abi,
     functionName: 'getOption' as const,
     args: [id],
   }));
+  const { data: optionResults } = useReadContracts({
+    contracts: optionContracts as readonly { address: `0x${string}`; abi: Abi; functionName: string; args?: readonly unknown[] }[],
+    query: { enabled: ids.length > 0, refetchInterval: 15000 },
+  });
 
- const { data: optionResults } = useReadContracts({
-  contracts: optionContracts as readonly {
-    address: `0x${string}`;
-    abi: Abi;
-    functionName: string;
-    args?: readonly unknown[];
-  }[],
-  query: { enabled: ids.length > 0, refetchInterval: 15000 },
-});
-
-  // 3. Parse option data
   const options = useMemo<OptionData[]>(() => {
     if (!optionResults) return [];
-    return optionResults
-      .map((r, i) => {
-        if (r.status !== 'success' || !r.result) return null;
-        const opt = r.result as {
-          tokenId: bigint;
-          terms: {
-            optionType: number;
-            latitude: string;
-            longitude: string;
-            expiryDate: bigint;
-            strikeMM: bigint;
-            spreadMM: bigint;
-            notional: bigint;
-          };
-          state: { status: number };
-        };
-        return {
-          tokenId:    Number(opt.tokenId ?? ids[i]),
-          optionType: Number(opt.terms.optionType),
-          latitude:   opt.terms.latitude,
-          longitude:  opt.terms.longitude,
-          expiryDate: opt.terms.expiryDate,
-          strikeMM:   opt.terms.strikeMM,
-          spreadMM:   opt.terms.spreadMM,
-          notional:   opt.terms.notional,
-          status:     Number(opt.state.status),
-        } as OptionData;
-      })
-      .filter((o): o is OptionData => o !== null);
+    return optionResults.map((r, i) => {
+      if (r.status !== 'success' || !r.result) return null;
+      const opt = r.result as { tokenId: bigint; terms: { optionType: number; latitude: string; longitude: string; expiryDate: bigint; strikeMM: bigint; spreadMM: bigint; notional: bigint }; state: { status: number } };
+      return { tokenId: Number(opt.tokenId ?? ids[i]), optionType: Number(opt.terms.optionType), latitude: opt.terms.latitude, longitude: opt.terms.longitude, expiryDate: opt.terms.expiryDate, strikeMM: opt.terms.strikeMM, spreadMM: opt.terms.spreadMM, notional: opt.terms.notional, status: Number(opt.state.status) } as OptionData;
+    }).filter((o): o is OptionData => o !== null);
   }, [optionResults, ids]);
 
-  // 4. Aggregate location exposure from option data
   const locationStats = useMemo(() => {
     const map = new Map<string, { name: string; exposure: bigint; count: number }>();
     for (const o of options) {
@@ -412,69 +391,43 @@ function RiskDashboard({ tvl, utilizationBps }: { tvl: bigint; utilizationBps: b
     return Array.from(map.values()).sort((a, b) => (a.exposure > b.exposure ? -1 : 1));
   }, [options]);
 
-  const totalOpenInterest = useMemo(
-    () => options.reduce((acc, o) => acc + o.spreadMM * o.notional, BigInt(0)),
-    [options]
-  );
-
+  const totalOpenInterest = useMemo(() => options.reduce((acc, o) => acc + o.spreadMM * o.notional, BigInt(0)), [options]);
   const tvlNum = Number(tvl);
 
   return (
     <>
-      {/* ── Open Interest ────────────────────────────────────── */}
       <div style={css.wrap}>
         <div style={css.header}>
           <span style={css.label}>Live positions</span>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '0.5rem' }}>
             <h2 style={{ ...css.headerTitle, marginBottom: 0 }}>Open interest</h2>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.65rem', color: T.textMuted, fontFamily: "'DM Mono', monospace", letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.15rem' }}>
-                Total at risk
-              </div>
-              <div style={{ fontSize: '1.4rem', color: T.green, fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
-                {formatEther(totalOpenInterest)} ETH
-              </div>
+              <div style={{ fontSize: '0.65rem', color: T.textMuted, fontFamily: "'DM Mono', monospace", letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Total at risk</div>
+              <div style={{ fontSize: '1.4rem', color: T.green, fontFamily: "'Cormorant Garamond', Georgia, serif" }}>{formatEther(totalOpenInterest)} ETH</div>
             </div>
           </div>
           <p style={css.headerSub}>{options.length} active option{options.length !== 1 ? 's' : ''} — data read from on-chain</p>
         </div>
-
         <OpenInterestTable options={options} />
       </div>
 
-      {/* ── Location Concentration ───────────────────────────── */}
       <div style={css.wrap}>
         <div style={css.header}>
           <span style={css.label}>Risk concentration</span>
           <h2 style={css.headerTitle}>Exposure by location</h2>
           <p style={css.headerSub}>20% per-location cap · amber line = limit</p>
         </div>
-
         {locationStats.length === 0 ? (
-          <div style={{ padding: '2rem 2.5rem', color: T.textMuted, fontSize: '0.88rem', fontFamily: "'DM Mono', monospace" }}>
-            No active exposure.
-          </div>
+          <div style={{ padding: '2rem 2.5rem', color: T.textMuted, fontSize: '0.88rem', fontFamily: "'DM Mono', monospace" }}>No active exposure.</div>
         ) : (
           <div style={{ padding: '1.75rem 2.5rem' }}>
             {locationStats.map((loc) => {
-              const exposurePct = tvlNum > 0
-                ? (Number(loc.exposure) / tvlNum) * 100
-                : 0;
-              return (
-                <LocationBar
-                  key={loc.name}
-                  name={loc.name}
-                  exposurePct={exposurePct}
-                  maxBps={2000}
-                  count={loc.count}
-                />
-              );
+              const exposurePct = tvlNum > 0 ? (Number(loc.exposure) / tvlNum) * 100 : 0;
+              return <LocationBar key={loc.name} name={loc.name} exposurePct={exposurePct} maxBps={2000} count={loc.count} />;
             })}
             <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>
               <span>Utilization across all locations</span>
-              <span style={{ color: T.green, fontWeight: 700 }}>
-                {tvlNum > 0 ? ((Number(totalOpenInterest) / tvlNum) * 100).toFixed(1) : '0.0'}% of TVL
-              </span>
+              <span style={{ color: T.green, fontWeight: 700 }}>{tvlNum > 0 ? ((Number(totalOpenInterest) / tvlNum) * 100).toFixed(1) : '0.0'}% of TVL</span>
             </div>
           </div>
         )}
@@ -483,23 +436,83 @@ function RiskDashboard({ tvl, utilizationBps }: { tvl: bigint; utilizationBps: b
   );
 }
 
+// ─── ReinsurancePoolCard ──────────────────────────────────────────────────────
+// Shows a read-only status badge for the reinsurance pool within the vault overview
+function ReinsurancePoolBadge({
+  reinsuranceBps, poolCapacity, poolDrawn, poolYield,
+}: {
+  reinsuranceBps: bigint | undefined;
+  poolCapacity:   bigint | undefined;
+  poolDrawn:      bigint | undefined;
+  poolYield:      bigint | undefined;
+}) {
+  const isActive = reinsuranceBps !== undefined && reinsuranceBps > BigInt(0);
+  return (
+    <div style={{ padding: '1rem 2rem', background: T.tealLight, borderTop: `1px solid ${T.tealBorder}`, display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: isActive ? T.teal : T.textMuted, display: 'inline-block' }} />
+        <span style={{ fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: T.teal, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+          Reinsurance Pool {isActive ? `— ${Number(reinsuranceBps) / 100}% yield routing` : '— inactive'}
+        </span>
+      </div>
+      {isActive && (
+        <>
+          <div style={{ fontSize: '0.75rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>
+            Capacity: <span style={{ color: T.teal, fontWeight: 700 }}>{poolCapacity !== undefined ? formatEther(poolCapacity) : '—'} ETH</span>
+          </div>
+          <div style={{ fontSize: '0.75rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>
+            Drawn: <span style={{ color: T.green }}>{poolDrawn !== undefined ? formatEther(poolDrawn) : '—'} ETH</span>
+          </div>
+          <div style={{ fontSize: '0.75rem', color: T.textMuted, fontFamily: "'DM Mono', monospace" }}>
+            Accrued yield: <span style={{ color: T.successText, fontWeight: 700 }}>{poolYield !== undefined ? formatEther(poolYield) : '—'} ETH</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function LiquidityPool() {
   const { address, isConnected } = useAccount();
-  const [mounted, setMounted]   = useState(false);
-  const [depositAmount, setDepositAmount]   = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  // Vault deposit/withdraw state
+  const [depositAmount,  setDepositAmount]  = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [needsApproval, setNeedsApproval]   = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'risk'>('overview');
+  const [needsApproval,  setNeedsApproval]  = useState(false);
+
+  // Pool deposit/withdraw state
+  const [poolDepositAmount,  setPoolDepositAmount]  = useState('');
+  const [poolWithdrawAmount, setPoolWithdrawAmount] = useState('');
+  const [poolNeedsApproval,  setPoolNeedsApproval]  = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'reinsurance' | 'risk'>('overview');
 
   useEffect(() => { setMounted(true); }, []);
 
-  const { data: metricsData, refetch: refetchMetrics }     = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'getMetrics',    query: { enabled: mounted && isConnected } });
-  const { data: lpBalance,   refetch: refetchLPBalance }   = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'balanceOf',     args: address ? [address] : undefined, query: { enabled: mounted && isConnected && !!address } });
-  const { data: wethBalance, refetch: refetchWETH }        = useReadContract({ address: CONTRACTS.WETH,  abi: WETH_ABI,  functionName: 'balanceOf',     args: address ? [address] : undefined, query: { enabled: mounted && isConnected && !!address } });
-  const { data: wethAllowance, refetch: refetchAllowance } = useReadContract({ address: CONTRACTS.WETH,  abi: WETH_ABI,  functionName: 'allowance',     args: address ? [address, CONTRACTS.VAULT] : undefined, query: { enabled: mounted && isConnected && !!address } });
-  const { data: maxWithdraw }                              = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'maxWithdraw',   args: address ? [address] : undefined, query: { enabled: mounted && isConnected && !!address } });
+  // ── Vault reads ───────────────────────────────────────────────────────────
+  const { data: metricsData,   refetch: refetchMetrics    } = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'getMetrics',        query: { enabled: mounted && isConnected } });
+  const { data: lpBalance,     refetch: refetchLPBalance  } = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'balanceOf',         args: address ? [address] : undefined, query: { enabled: mounted && isConnected && !!address } });
+  const { data: maxWithdraw }                               = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'maxWithdraw',        args: address ? [address] : undefined, query: { enabled: mounted && isConnected && !!address } });
+  const { data: reinsuranceBps }                            = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'reinsuranceYieldBps', query: { enabled: mounted } });
 
+  // ── WETH reads ────────────────────────────────────────────────────────────
+  const { data: wethBalance,   refetch: refetchWETH       } = useReadContract({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'balanceOf',  args: address ? [address] : undefined, query: { enabled: mounted && isConnected && !!address } });
+  const { data: wethAllowance, refetch: refetchAllowance  } = useReadContract({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'allowance',  args: address ? [address, CONTRACTS.VAULT] : undefined, query: { enabled: mounted && isConnected && !!address } });
+  const { data: poolAllowance, refetch: refetchPoolAllowance } = useReadContract({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'allowance', args: address ? [address, CONTRACTS.REINSURANCE_POOL] : undefined, query: { enabled: mounted && isConnected && !!address } });
+
+  // ── Pool reads ────────────────────────────────────────────────────────────
+  const { data: poolTotalAssets,   refetch: refetchPoolMetrics } = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'totalAssets',       query: { enabled: mounted } });
+  const { data: poolTotalDrawn }   = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'totalDrawn',        query: { enabled: mounted } });
+  const { data: poolAccruedYield } = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'accruedYield',      query: { enabled: mounted } });
+  const { data: poolCapacity }     = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'availableCapacity', query: { enabled: mounted } });
+  const { data: poolMaxDrawable }  = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'maxDrawableNow',    query: { enabled: mounted } });
+  const { data: poolLockup }       = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'lockupPeriod',      query: { enabled: mounted } });
+  const { data: poolShares,  refetch: refetchPoolShares } = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'balanceOf', args: address ? [address] : undefined, query: { enabled: mounted && isConnected && !!address } });
+  const { data: poolTotalSupply } = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'totalSupply', query: { enabled: mounted } });
+
+  // ── Vault write contracts ─────────────────────────────────────────────────
   const { writeContract: wrapETH,  data: wrapHash    } = useWriteContract();
   const { writeContract: approve,  data: approveHash  } = useWriteContract();
   const { writeContract: deposit,  data: depositHash,  error: depositError  } = useWriteContract();
@@ -510,22 +523,53 @@ export default function LiquidityPool() {
   const { isLoading: isDepositPending,  isSuccess: isDepositSuccess  } = useWaitForTransactionReceipt({ hash: depositHash  });
   const { isLoading: isWithdrawPending, isSuccess: isWithdrawSuccess } = useWaitForTransactionReceipt({ hash: withdrawHash });
 
+  // ── Pool write contracts ──────────────────────────────────────────────────
+  const { writeContract: wrapPool,    data: wrapPoolHash                        } = useWriteContract();
+  const { writeContract: approvePool, data: approvePoolHash  } = useWriteContract();
+  const { writeContract: depositPool,   data: depositPoolHash,  error: depositPoolError  } = useWriteContract();
+  const { writeContract: withdrawPool,  data: withdrawPoolHash, error: withdrawPoolError } = useWriteContract();
+
+  const { isLoading: isWrappingPool,     isSuccess: isWrapPoolSuccess    } = useWaitForTransactionReceipt({ hash: wrapPoolHash    });
+  const { isLoading: isApprovingPool,    isSuccess: isApprovePoolSuccess } = useWaitForTransactionReceipt({ hash: approvePoolHash  });
+  const { isLoading: isDepositPoolPending, isSuccess: isDepositPoolSuccess } = useWaitForTransactionReceipt({ hash: depositPoolHash });
+  const { isLoading: isWithdrawPoolPending, isSuccess: isWithdrawPoolSuccess } = useWaitForTransactionReceipt({ hash: withdrawPoolHash });
+
+  // ── Approval checks ───────────────────────────────────────────────────────
   useEffect(() => {
     if (depositAmount && wethAllowance !== undefined) {
-      try { setNeedsApproval(parseEther(depositAmount) > (wethAllowance as bigint)); } catch { /* invalid */ }
+      try { setNeedsApproval(parseEther(depositAmount) > (wethAllowance as bigint)); } catch { /* skip */ }
     }
   }, [depositAmount, wethAllowance]);
 
+  useEffect(() => {
+    if (poolDepositAmount && poolAllowance !== undefined) {
+      try { setPoolNeedsApproval(parseEther(poolDepositAmount) > (poolAllowance as bigint)); } catch { /* skip */ }
+    }
+  }, [poolDepositAmount, poolAllowance]);
+
+  // ── Refetch after tx ──────────────────────────────────────────────────────
   useEffect(() => {
     if (isWrapSuccess || isApproveSuccess || isDepositSuccess || isWithdrawSuccess) {
       setTimeout(() => { refetchMetrics(); refetchLPBalance(); refetchWETH(); refetchAllowance(); }, 2000);
     }
   }, [isWrapSuccess, isApproveSuccess, isDepositSuccess, isWithdrawSuccess, refetchMetrics, refetchLPBalance, refetchWETH, refetchAllowance]);
 
-  const handleWrapETH  = () => { if (!depositAmount)          return; wrapETH ({ address: CONTRACTS.WETH,  abi: WETH_ABI,  functionName: 'deposit', value: parseEther(depositAmount) }); };
-  const handleApprove  = () => { if (!depositAmount)          return; approve ({ address: CONTRACTS.WETH,  abi: WETH_ABI,  functionName: 'approve', args: [CONTRACTS.VAULT, parseEther(depositAmount)] }); };
-  const handleDeposit  = () => { if (!depositAmount || !address) return; deposit({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'deposit', args: [parseEther(depositAmount), address] }); setDepositAmount(''); };
-  const handleWithdraw = () => { if (!withdrawAmount || !address) return; withdraw({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'withdraw', args: [parseEther(withdrawAmount), address, address] }); setWithdrawAmount(''); };
+  useEffect(() => {
+    if (isWrapPoolSuccess || isApprovePoolSuccess || isDepositPoolSuccess || isWithdrawPoolSuccess) {
+      setTimeout(() => { refetchPoolMetrics(); refetchPoolShares(); refetchWETH(); refetchPoolAllowance(); }, 2000);
+    }
+  }, [isWrapPoolSuccess, isApprovePoolSuccess, isDepositPoolSuccess, isWithdrawPoolSuccess, refetchPoolMetrics, refetchPoolShares, refetchWETH, refetchPoolAllowance]);
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleWrapETH   = () => { if (!depositAmount) return; wrapETH({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'deposit', value: parseEther(depositAmount) }); };
+  const handleApprove   = () => { if (!depositAmount) return; approve({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'approve', args: [CONTRACTS.VAULT, parseEther(depositAmount)] }); };
+  const handleDeposit   = () => { if (!depositAmount || !address) return; deposit({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'deposit', args: [parseEther(depositAmount), address] }); setDepositAmount(''); };
+  const handleWithdraw  = () => { if (!withdrawAmount || !address) return; withdraw({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'withdraw', args: [parseEther(withdrawAmount), address, address] }); setWithdrawAmount(''); };
+
+  const handleWrapPool     = () => { if (!poolDepositAmount) return; wrapPool({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'deposit', value: parseEther(poolDepositAmount) }); };
+  const handleApprovePool  = () => { if (!poolDepositAmount) return; approvePool({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'approve', args: [CONTRACTS.REINSURANCE_POOL, parseEther(poolDepositAmount)] }); };
+  const handleDepositPool  = () => { if (!poolDepositAmount || !address) return; depositPool({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'deposit', args: [parseEther(poolDepositAmount), address], gas: BigInt(300_000) }); setPoolDepositAmount(''); };
+  const handleWithdrawPool = () => { if (!poolWithdrawAmount || !address) return; withdrawPool({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'withdraw', args: [parseEther(poolWithdrawAmount), address, address], gas: BigInt(300_000) }); setPoolWithdrawAmount(''); };
 
   if (!mounted) return null;
 
@@ -541,11 +585,29 @@ export default function LiquidityPool() {
     );
   }
 
-  const metrics     = metricsData as [bigint, bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
-  const [tvl, locked, available, utilization, premiums, payouts, netPnL] = metrics ?? Array(7).fill(BigInt(0)) as bigint[];
-  const netPositive = (netPnL as bigint) >= BigInt(0);
+  // ── Parse vault metrics (8-field struct) ──────────────────────────────────
+  const m = metricsData as { tvl: bigint; locked: bigint; available: bigint; utilizationBps: bigint; premiumsEarned: bigint; totalPayouts: bigint; netPnL: bigint; reinsuranceReceived: bigint } | undefined;
+  const tvl               = m?.tvl               ?? BigInt(0);
+  const locked            = m?.locked            ?? BigInt(0);
+  const available         = m?.available         ?? BigInt(0);
+  const utilization       = m?.utilizationBps    ?? BigInt(0);
+  const premiums          = m?.premiumsEarned     ?? BigInt(0);
+  const payouts           = m?.totalPayouts       ?? BigInt(0);
+  const netPnL            = m?.netPnL             ?? BigInt(0);
+  const reinsuranceRcvd   = m?.reinsuranceReceived ?? BigInt(0);
+  const netPositive       = netPnL >= BigInt(0);
 
-  // ── Tab nav styles ──────────────────────────────────────────────────────
+  // ── Pool utilization (drawn / totalAssets) ────────────────────────────────
+  const poolDrawnNum  = Number(poolTotalDrawn  ?? BigInt(0));
+  const poolAssetsNum = Number(poolTotalAssets ?? BigInt(0));
+  const poolUtilBps   = poolAssetsNum > 0 ? Math.round((poolDrawnNum / poolAssetsNum) * 10000) : 0;
+
+  // ── Pool share of TVL ─────────────────────────────────────────────────────
+  const poolSharePct = poolTotalSupply !== undefined && (poolTotalSupply as bigint) > BigInt(0) && poolShares !== undefined
+    ? ((Number(poolShares as bigint) / Number(poolTotalSupply as bigint)) * 100).toFixed(2)
+    : '0.00';
+
+  // ── Tab nav ───────────────────────────────────────────────────────────────
   const tabStyle = (active: boolean): CSSProperties => ({
     padding: '0.65rem 1.5rem',
     background: active ? T.green : 'transparent',
@@ -560,32 +622,32 @@ export default function LiquidityPool() {
     <div style={css.root}>
       <style>{RESPONSIVE}</style>
 
-      {/* ── Tab switcher ───────────────────────────────────────────── */}
+      {/* ── Tab switcher ─────────────────────────────────────────────────── */}
       <div style={{ marginBottom: '1.25rem', display: 'flex', gap: 1, background: T.border }}>
-        <button style={tabStyle(activeTab === 'overview')} onClick={() => setActiveTab('overview')}>
-          Pool overview
-        </button>
-        <button style={tabStyle(activeTab === 'risk')} onClick={() => setActiveTab('risk')}>
-          Risk dashboard
-        </button>
+        <button style={tabStyle(activeTab === 'overview')}     onClick={() => setActiveTab('overview')}>Pool overview</button>
+        <button style={tabStyle(activeTab === 'reinsurance')}  onClick={() => setActiveTab('reinsurance')}>Reinsurance pool</button>
+        <button style={tabStyle(activeTab === 'risk')}         onClick={() => setActiveTab('risk')}>Risk dashboard</button>
       </div>
 
+      {/* ════════════════════════════════════════════════════════════════════
+          OVERVIEW TAB
+      ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'overview' && (
         <>
-          {/* ── Pool metrics ───────────────────────────────────────── */}
+          {/* Pool metrics */}
           <div style={css.wrap}>
             <div style={css.topBar} />
             <div style={css.header}>
-              <span style={css.label}>Liquidity Pool</span>
+              <span style={css.label}>Primary Vault</span>
               <h2 style={css.headerTitle}>ERC-4626 vault overview</h2>
-              <p style={css.headerSub}>Chainlink-automated, 80% max utilization</p>
+              <p style={css.headerSub}>Chainlink-automated · 80% max utilization · reinsurance-backed</p>
             </div>
 
             <div className="lp-metrics-grid">
               {[
-                { label: 'Total value locked',  value: `${formatEther(tvl as bigint)} ETH`,       sub: 'vault TVL' },
-                { label: 'Available liquidity', value: `${formatEther(available as bigint)} ETH`, sub: `${formatEther(locked as bigint)} ETH locked` },
-                { label: 'Utilization rate',    value: `${Number(utilization as bigint) / 100}%`, sub: '80% maximum' },
+                { label: 'Total value locked',  value: `${formatEther(tvl)} ETH`,       sub: 'vault TVL' },
+                { label: 'Available liquidity', value: `${formatEther(available)} ETH`, sub: `${formatEther(locked)} ETH locked` },
+                { label: 'Utilization rate',    value: `${Number(utilization) / 100}%`, sub: '80% maximum' },
               ].map(({ label, value, sub }) => (
                 <div key={label} style={css.metricCell}>
                   <span style={css.metricLabel}>{label}</span>
@@ -595,30 +657,41 @@ export default function LiquidityPool() {
               ))}
             </div>
 
-            {/* Utilization bar */}
             <div style={{ padding: '1.25rem 2rem', borderTop: `1px solid ${T.border}`, background: T.white }}>
-              <UtilizationBar bps={Number(utilization as bigint)} />
+              <UtilizationBar bps={Number(utilization)} />
             </div>
 
             <div className="lp-secondary-grid">
               <div className="lp-secondary-cell">
-                <span style={css.secondaryLabel}>Total premiums earned</span>
-                <span style={{ ...css.secondaryValue, color: T.successText }}>+{formatEther(premiums as bigint)} ETH</span>
+                <span style={css.secondaryLabel}>Premiums earned</span>
+                <span style={{ ...css.secondaryValue, color: T.successText }}>+{formatEther(premiums)} ETH</span>
               </div>
               <div className="lp-secondary-cell">
-                <span style={css.secondaryLabel}>Total payouts made</span>
-                <span style={{ ...css.secondaryValue, color: T.errorText }}>−{formatEther(payouts as bigint)} ETH</span>
+                <span style={css.secondaryLabel}>Payouts made</span>
+                <span style={{ ...css.secondaryValue, color: T.errorText }}>−{formatEther(payouts)} ETH</span>
+              </div>
+              <div className="lp-secondary-cell">
+                <span style={css.secondaryLabel}>Reinsurance received</span>
+                <span style={{ ...css.secondaryValue, color: T.teal }}>+{formatEther(reinsuranceRcvd)} ETH</span>
               </div>
               <div className="lp-secondary-cell">
                 <span style={css.secondaryLabel}>Net P&amp;L</span>
                 <span style={{ ...css.secondaryValue, color: netPositive ? T.successText : T.errorText }}>
-                  {netPositive ? '+' : '−'}{formatEther(netPositive ? (netPnL as bigint) : -(netPnL as bigint))} ETH
+                  {netPositive ? '+' : '−'}{formatEther(netPositive ? netPnL : -netPnL)} ETH
                 </span>
               </div>
             </div>
+
+            {/* Reinsurance pool badge */}
+            <ReinsurancePoolBadge
+              reinsuranceBps={reinsuranceBps as bigint | undefined}
+              poolCapacity={poolCapacity as bigint | undefined}
+              poolDrawn={poolTotalDrawn as bigint | undefined}
+              poolYield={poolAccruedYield as bigint | undefined}
+            />
           </div>
 
-          {/* ── User position + actions ─────────────────────────────── */}
+          {/* User position + actions */}
           <div style={css.wrap}>
             <div style={css.header}>
               <span style={css.label}>Your position</span>
@@ -651,13 +724,13 @@ export default function LiquidityPool() {
                 <h3 style={css.panelTitle}>Provide liquidity</h3>
                 <div style={css.noteBox}>
                   <span style={css.noteTitle}>Three-step process</span>
-                  The vault accepts WETH only. Wrap your ETH first, approve the vault to spend it, then deposit to receive LP tokens representing your share.
+                  The vault accepts WETH only. Wrap your ETH first, approve the vault to spend it, then deposit to receive LP tokens.
                 </div>
                 <input type="number" step="0.01" placeholder="Amount in ETH" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} style={css.input} />
-                <button onClick={handleWrapETH}  disabled={!depositAmount || isWrapping}                     style={actionBtn(!depositAmount || isWrapping ? 'disabled' : 'ghost')}>
+                <button onClick={handleWrapETH}  disabled={!depositAmount || isWrapping}                        style={actionBtn(!depositAmount || isWrapping ? 'disabled' : 'ghost')}>
                   {isWrapping  ? 'Wrapping…'  : '1 — Wrap ETH → WETH'}
                 </button>
-                <button onClick={handleApprove}  disabled={!depositAmount || !needsApproval || isApproving}  style={actionBtn(!depositAmount || !needsApproval || isApproving ? 'disabled' : 'ghost')}>
+                <button onClick={handleApprove}  disabled={!depositAmount || !needsApproval || isApproving}     style={actionBtn(!depositAmount || !needsApproval || isApproving ? 'disabled' : 'ghost')}>
                   {isApproving ? 'Approving…' : needsApproval ? '2 — Approve WETH' : '2 — Already approved ✓'}
                 </button>
                 <button onClick={handleDeposit}  disabled={!depositAmount || needsApproval || isDepositPending} style={actionBtn(!depositAmount || needsApproval || isDepositPending ? 'disabled' : 'amber')}>
@@ -670,7 +743,7 @@ export default function LiquidityPool() {
                 <h3 style={css.panelTitle}>Reclaim liquidity</h3>
                 <div style={css.noteBox}>
                   <span style={css.noteTitle}>Availability</span>
-                  Only unlocked funds can be withdrawn. Capital backing active options remains locked until those options settle.
+                  Only unlocked funds can be withdrawn. Capital backing active options remains locked until settlement.
                 </div>
                 <input type="number" step="0.01" placeholder="Amount in ETH" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} style={css.input} />
                 {maxWithdraw !== undefined && (
@@ -683,7 +756,7 @@ export default function LiquidityPool() {
             </div>
           </div>
 
-          {/* ── How it works ─────────────────────────────────────────── */}
+          {/* How it works */}
           <div style={css.wrap}>
             <div style={css.header}>
               <span style={css.label}>Protocol mechanics</span>
@@ -691,10 +764,9 @@ export default function LiquidityPool() {
             </div>
             <div className="lp-how-grid">
               {[
-                { icon: '💵', title: 'Earn premiums',       desc: 'Every option buyer pays a premium into the vault. As a liquidity provider, you earn a proportional share of all premiums collected.' },
-                { icon: '⚖️', title: 'Take on risk',        desc: 'If options expire in-the-money, payouts are funded from the vault. Your maximum loss is bounded by your deposited capital.' },
-                { icon: '🔒', title: 'Capital efficiency',  desc: 'Only a maximum of 80% of TVL can be locked at any time. Up to 20% per location. This keeps the vault protected from correlated events.' },
-                { icon: '🎫', title: 'LP tokens',           desc: 'Receive ERC-4626 vault shares representing your proportional claim. Redeem them at any time for your share of the unlocked pool.' },
+                { icon: '💵', title: 'Earn premiums',       desc: 'Every option buyer pays a premium into the vault. LPs earn a proportional share of all premiums collected, net of payouts.' },
+                { icon: '⚖️', title: 'Take on risk',        desc: 'If options expire in-the-money, payouts are funded from the vault. Maximum loss is bounded by deposited capital.' },
+                { icon: '🛡', title: 'Reinsurance backstop', desc: 'A portion of premiums is routed to the Reinsurance Pool. In extreme loss events the vault can draw from it, protecting LPs from catastrophic payouts.' },
               ].map(({ icon, title, desc }) => (
                 <div key={title} style={css.howCell}>
                   <div style={css.howIcon}>{icon}</div>
@@ -707,11 +779,161 @@ export default function LiquidityPool() {
         </>
       )}
 
+      {/* ════════════════════════════════════════════════════════════════════
+          REINSURANCE POOL TAB
+      ════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'reinsurance' && (
+        <>
+          {/* Pool metrics */}
+          <div style={css.wrapTeal}>
+            <div style={css.tealTopBar} />
+            <div style={css.headerTeal}>
+              <span style={css.labelTeal}>Reinsurance Pool</span>
+              <h2 style={css.headerTitle}>Pool overview</h2>
+              <p style={css.headerSub}>
+                Backstop capital for the primary vault · {poolLockup ? fmtLockup(poolLockup as bigint) : '—'} lockup ·
+                {reinsuranceBps ? ` ${Number(reinsuranceBps as bigint) / 100}% yield routing` : ' yield routing inactive'}
+              </p>
+            </div>
+
+            <div className="lp-pool-metrics-grid">
+              {[
+                { label: 'Pool TVL',           value: `${poolTotalAssets !== undefined ? formatEther(poolTotalAssets as bigint) : '—'} ETH`, sub: 'total deposited capital' },
+                { label: 'Available capacity', value: `${poolCapacity    !== undefined ? formatEther(poolCapacity    as bigint) : '—'} ETH`, sub: `${poolMaxDrawable !== undefined ? formatEther(poolMaxDrawable as bigint) : '—'} ETH drawable now` },
+                { label: 'Total drawn',        value: `${poolTotalDrawn  !== undefined ? formatEther(poolTotalDrawn  as bigint) : '—'} ETH`, sub: 'drawn by primary vault' },
+              ].map(({ label, value, sub }) => (
+                <div key={label} style={css.metricCellTeal}>
+                  <span style={css.metricLabelTeal}>{label}</span>
+                  <div style={css.metricValue}>{value}</div>
+                  <div style={css.metricSub}>{sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pool utilization bar */}
+            <div style={{ padding: '1.25rem 2rem', borderTop: `1px solid ${T.tealBorder}`, background: T.tealLight }}>
+              <UtilizationBar bps={poolUtilBps} color={T.teal} />
+            </div>
+
+            <div className="lp-pool-secondary-cell" style={{ borderTop: `1px solid ${T.tealBorder}`, padding: '1rem 2rem', display: 'flex', gap: '2.5rem', flexWrap: 'wrap' }}>
+              <div>
+                <span style={{ ...css.secondaryLabel, color: T.teal }}>Accrued yield</span>
+                <div style={{ ...css.secondaryValue, color: T.successText, marginTop: '0.2rem' }}>
+                  +{poolAccruedYield !== undefined ? formatEther(poolAccruedYield as bigint) : '—'} ETH
+                </div>
+              </div>
+              <div>
+                <span style={{ ...css.secondaryLabel, color: T.teal }}>Lockup period</span>
+                <div style={{ ...css.secondaryValue, marginTop: '0.2rem' }}>
+                  {poolLockup ? fmtLockup(poolLockup as bigint) : '—'}
+                </div>
+              </div>
+              <div>
+                <span style={{ ...css.secondaryLabel, color: T.teal }}>Yield routing (from vault)</span>
+                <div style={{ ...css.secondaryValue, color: T.teal, marginTop: '0.2rem' }}>
+                  {reinsuranceBps ? `${Number(reinsuranceBps as bigint) / 100}% of premiums` : 'inactive'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Your pool position */}
+          <div style={css.wrapTeal}>
+            <div style={css.headerTeal}>
+              <span style={css.labelTeal}>Your position</span>
+              <h2 style={css.headerTitle}>Reinsurance liquidity</h2>
+            </div>
+
+            <div className="lp-pool-pos-grid">
+              <div style={css.posCellTeal}>
+                <span style={css.posLabelTeal}>Pool shares held</span>
+                <div style={css.posValue}>{poolShares ? formatEther(poolShares as bigint) : '0'}</div>
+              </div>
+              <div style={css.posCellTeal}>
+                <span style={css.posLabelTeal}>Share of pool</span>
+                <div style={css.posValue}>{poolSharePct}%</div>
+              </div>
+              <div style={css.posCellTeal}>
+                <span style={css.posLabelTeal}>WETH balance</span>
+                <div style={css.posValue}>{wethBalance ? formatEther(wethBalance as bigint) : '0'}</div>
+              </div>
+            </div>
+
+            <div style={{ borderTop: `1px solid ${T.tealBorder}` }}>
+              {isWrapPoolSuccess      && <div style={alertBox('success')}>ETH wrapped to WETH successfully.</div>}
+              {isApprovePoolSuccess  && <div style={alertBox('success')}>WETH approved for the reinsurance pool.</div>}
+              {isDepositPoolSuccess  && <div style={alertBox('success')}>Pool deposit confirmed — shares issued.</div>}
+              {isWithdrawPoolSuccess && <div style={alertBox('success')}>Pool withdrawal confirmed.</div>}
+              {depositPoolError      && <div style={alertBox('error')}><strong>Deposit error:</strong> {depositPoolError.message}</div>}
+              {withdrawPoolError     && <div style={alertBox('error')}><strong>Withdraw error:</strong> {withdrawPoolError.message}</div>}
+            </div>
+
+            <div className="lp-pool-panel-grid">
+              <div style={css.panelTeal}>
+                <span style={css.panelLabelTeal}>Step 1–3</span>
+                <h3 style={css.panelTitle}>Deposit to pool</h3>
+                <div style={css.noteBoxTeal}>
+                  <span style={css.noteTitleTeal}>Lockup notice</span>
+                  Reinsurance capital is subject to a {poolLockup ? fmtLockup(poolLockup as bigint) : '—'} lockup. You earn yield routed from the primary vault and share in protocol risk management rewards.
+                </div>
+                <input type="number" step="0.01" placeholder="Amount in ETH" value={poolDepositAmount} onChange={(e) => setPoolDepositAmount(e.target.value)} style={{ ...css.input, borderColor: T.tealBorder }} />
+                <button onClick={handleWrapPool}     disabled={!poolDepositAmount || isWrappingPool}                              style={actionBtn(!poolDepositAmount || isWrappingPool ? 'disabled' : 'ghost')}>
+                  {isWrappingPool ? 'Wrapping…' : '1 — Wrap ETH → WETH'}
+                </button>
+                <button onClick={handleApprovePool}  disabled={!poolDepositAmount || !poolNeedsApproval || isApprovingPool}       style={actionBtn(!poolDepositAmount || !poolNeedsApproval || isApprovingPool ? 'disabled' : 'ghost')}>
+                  {isApprovingPool ? 'Approving…' : poolNeedsApproval ? '2 — Approve WETH for pool' : '2 — Already approved ✓'}
+                </button>
+                <button onClick={handleDepositPool}  disabled={!poolDepositAmount || poolNeedsApproval || isDepositPoolPending}   style={actionBtn(!poolDepositAmount || poolNeedsApproval || isDepositPoolPending ? 'disabled' : 'teal')}>
+                  {isDepositPoolPending ? 'Depositing…' : '3 — Deposit & receive shares →'}
+                </button>
+              </div>
+
+              <div style={{ ...css.panelTeal, borderLeft: `1px solid ${T.tealBorder}` }}>
+                <span style={css.panelLabelTeal}>Withdraw</span>
+                <h3 style={css.panelTitle}>Reclaim capital</h3>
+                <div style={css.noteBoxTeal}>
+                  <span style={css.noteTitleTeal}>Availability</span>
+                  Capital actively drawn by the vault to cover payouts is temporarily locked. Undisbursed funds can be withdrawn after the lockup period.
+                </div>
+                <input type="number" step="0.01" placeholder="Amount in WETH" value={poolWithdrawAmount} onChange={(e) => setPoolWithdrawAmount(e.target.value)} style={{ ...css.input, borderColor: T.tealBorder }} />
+                {poolCapacity !== undefined && (
+                  <p style={css.maxNote}>Pool available: {formatEther(poolCapacity as bigint)} ETH</p>
+                )}
+                <button onClick={handleWithdrawPool} disabled={!poolWithdrawAmount || isWithdrawPoolPending} style={actionBtn(!poolWithdrawAmount || isWithdrawPoolPending ? 'disabled' : 'teal')}>
+                  {isWithdrawPoolPending ? 'Withdrawing…' : 'Withdraw from pool →'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* How reinsurance works */}
+          <div style={css.wrapTeal}>
+            <div style={css.headerTeal}>
+              <span style={css.labelTeal}>Mechanics</span>
+              <h2 style={css.headerTitle}>How the reinsurance pool works</h2>
+            </div>
+            <div className="lp-how-grid">
+              {[
+                { icon: '↪', title: 'Yield routing',    desc: `${reinsuranceBps ? Number(reinsuranceBps as bigint) / 100 : '—'}% of every premium received by the primary vault is forwarded here via receiveYield(). This accumulates as accrued yield available to reinsurers.` },
+                { icon: '🚨', title: 'Emergency draw',   desc: 'When the vault faces a payout that depletes its available liquidity, it draws from the pool. Drawn capital is tracked on-chain and replenished as new deposits arrive.' },
+                { icon: '⏳', title: 'Lockup & returns', desc: `Reinsurance LP capital is locked for ${poolLockup ? fmtLockup(poolLockup as bigint) : '—'}, reflecting the illiquid nature of backstop capital. In return, depositors earn a higher effective yield than primary vault LPs.` },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} style={{ ...css.howCell, background: T.tealLight, border: 'none' }}>
+                  <div style={{ ...css.howIcon, color: T.teal }}>{icon}</div>
+                  <div style={css.howTitle}>{title}</div>
+                  <p style={css.howDesc}>{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          RISK DASHBOARD TAB
+      ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'risk' && (
-        <RiskDashboard
-          tvl={tvl as bigint}
-          utilizationBps={utilization as bigint}
-        />
+        <RiskDashboard tvl={tvl} utilizationBps={utilization} />
       )}
     </div>
   );

@@ -50,9 +50,6 @@ const T = {
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Old factory — kept so tokens in legacy escrows still appear in the scan
-const OLD_CCIP_ESCROW_FACTORY = '0xCE425d7Eee6de977c8B07324dE5BdC78354d02Ae';
-
 // Sepolia LINK token
 const LINK_TOKEN = '0x779877A7B0D9E8603169DdbD7836e478b4624789';
 
@@ -269,7 +266,7 @@ function DeployEscrowPanel({ address }: { address: string }) {
     args:         [address as `0x${string}`],
   }) as { data: bigint | undefined };
 
-    const { data: allowance, refetch: refetchAllowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address:      LINK_TOKEN as `0x${string}`,
     abi:          ERC20_ABI,
     functionName: 'allowance',
@@ -858,7 +855,7 @@ export default function MyOptions() {
     query:        { enabled: mounted && isConnected && !!address },
   }) as { data: bigint | undefined };
 
-  // ── Scan: wallet + old escrow + new escrow ────────────────────────────────
+  // ── Scan: wallet + current escrow factory only ────────────────────────────
   useEffect(() => {
     if (!mounted || !isConnected || !address || !publicClient) return;
     (async () => {
@@ -868,28 +865,17 @@ export default function MyOptions() {
       setPayoutsReceived(ZERO);
       setCounted(new Map());
 
-      // Fetch escrows from BOTH old and new factory so legacy tokens still appear
+      // Fetch escrows from the current factory only
       let escrowAddresses: string[] = [];
       try {
-        const [oldEscrows, newEscrows] = await Promise.all([
-          publicClient.readContract({
-            address:      OLD_CCIP_ESCROW_FACTORY as `0x${string}`,
-            abi:          CCIP_ESCROW_FACTORY_ABI,
-            functionName: 'getEscrowsByOwner',
-            args:         [address as `0x${string}`],
-          }),
-          publicClient.readContract({
-            address:      CONTRACTS.CCIP_ESCROW_FACTORY as `0x${string}`,
-            abi:          CCIP_ESCROW_FACTORY_ABI,
-            functionName: 'getEscrowsByOwner',
-            args:         [address as `0x${string}`],
-          }),
-        ]);
-        escrowAddresses = [
-          ...((oldEscrows as string[]) ?? []),
-          ...((newEscrows as string[]) ?? []),
-        ];
-      } catch { /* ignore */ }
+        const escrows = await publicClient.readContract({
+          address:      CONTRACTS.CCIP_ESCROW_FACTORY as `0x${string}`,
+          abi:          CCIP_ESCROW_FACTORY_ABI,
+          functionName: 'getEscrowsByOwner',
+          args:         [address as `0x${string}`],
+        });
+        escrowAddresses = (escrows as string[]) ?? [];
+      } catch { /* ignore — factory may have no escrows for this wallet */ }
 
       const owned: bigint[] = [];
       for (let i = 0; i < 50; i++) {
@@ -1013,6 +999,7 @@ export default function MyOptions() {
             ['Address',        address ?? '—'],
             ['NFT balance',    balance?.toString() ?? '0'],
             ['Contract',       CONTRACTS.WEATHER_OPTION],
+            ['Factory',        CONTRACTS.CCIP_ESCROW_FACTORY],
             ['Tokens scanned', '0–49'],
           ].map(([k, v]) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: `1px solid ${T.amberBorder}`, fontSize: '0.82rem', flexWrap: 'wrap', gap: '0.25rem' }}>

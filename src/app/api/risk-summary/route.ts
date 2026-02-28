@@ -14,7 +14,7 @@ interface RateLimitEntry {
 const store = new Map<string, RateLimitEntry>();
 
 const LIMIT      = 2;         // sorry but we have to limit the free demo key!
-const WINDOW_MS  = 60_000;    // 1-minute rolling window
+const WINDOW_MS  = 14400000;    // 4-hour rolling window :)
 
 /** Returns { allowed, remaining, resetAt } for the given key. */
 function rateLimit(key: string): { allowed: boolean; remaining: number; resetAt: number } {
