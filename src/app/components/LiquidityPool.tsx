@@ -118,6 +118,10 @@ const RESPONSIVE = `
   }
   .bar-fill { animation: barGrow 0.7s cubic-bezier(0.16,1,0.3,1) forwards; }
 
+  /* FIX 1: tab nav wraps on narrow screens instead of overflowing */
+  .lp-tab-nav { display: flex; gap: 1px; background: ${T.border}; flex-wrap: wrap; }
+  .lp-tab-nav button { flex: 1 1 auto; min-width: 0; }
+
   @media (max-width: 768px) {
     .lp-metrics-grid, .lp-pool-metrics-grid, .lp-secondary-grid, .lp-panel-grid, .lp-pool-panel-grid { grid-template-columns: 1fr; }
     .lp-secondary-cell, .lp-pool-secondary-cell { padding: 0.85rem 1.25rem; }
@@ -202,7 +206,8 @@ function resolveLocationName(lat: string, lon: string): string {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const css: Record<string, CSSProperties> = {
-  root:           { fontFamily: "'Cormorant Garamond', Georgia, serif" },
+  // FIX 2: overflowX hidden + maxWidth 100% prevents horizontal page bleed
+  root:           { fontFamily: "'Cormorant Garamond', Georgia, serif", overflowX: 'hidden', maxWidth: '100%' },
   topBar:         { height: 3, background: `linear-gradient(90deg, ${T.amber}, ${T.greenMid})` },
   tealTopBar:     { height: 3, background: `linear-gradient(90deg, ${T.teal}, ${T.tealMid})` },
   wrap:           { background: T.cream, border: `1px solid ${T.border}`, overflow: 'hidden', marginBottom: '1.25rem' },
@@ -321,7 +326,8 @@ function OpenInterestTable({ options }: { options: OptionData[] }) {
     );
   }
   return (
-    <div style={{ overflowX: 'auto' }}>
+    // FIX 3: add -webkit-overflow-scrolling for smooth iOS momentum scroll
+    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
       <table className="dash-oi-table">
         <thead>
           <tr><th>#</th><th>Type</th><th>Location</th><th>Strike / Spread</th><th>Max payout</th><th>Expires</th></tr>
@@ -436,8 +442,7 @@ function RiskDashboard({ tvl, utilizationBps }: { tvl: bigint; utilizationBps: b
   );
 }
 
-// ─── ReinsurancePoolCard ──────────────────────────────────────────────────────
-// Shows a read-only status badge for the reinsurance pool within the vault overview
+// ─── ReinsurancePoolBadge ─────────────────────────────────────────────────────
 function ReinsurancePoolBadge({
   reinsuranceBps, poolCapacity, poolDrawn, poolYield,
 }: {
@@ -477,12 +482,10 @@ export default function LiquidityPool() {
   const { address, isConnected } = useAccount();
   const [mounted, setMounted] = useState(false);
 
-  // Vault deposit/withdraw state
   const [depositAmount,  setDepositAmount]  = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [needsApproval,  setNeedsApproval]  = useState(false);
 
-  // Pool deposit/withdraw state
   const [poolDepositAmount,  setPoolDepositAmount]  = useState('');
   const [poolWithdrawAmount, setPoolWithdrawAmount] = useState('');
   const [poolNeedsApproval,  setPoolNeedsApproval]  = useState(false);
@@ -491,18 +494,15 @@ export default function LiquidityPool() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // ── Vault reads ───────────────────────────────────────────────────────────
   const { data: metricsData,   refetch: refetchMetrics    } = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'getMetrics',        query: { enabled: mounted && isConnected } });
   const { data: lpBalance,     refetch: refetchLPBalance  } = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'balanceOf',         args: address ? [address] : undefined, query: { enabled: mounted && isConnected && !!address } });
   const { data: maxWithdraw }                               = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'maxWithdraw',        args: address ? [address] : undefined, query: { enabled: mounted && isConnected && !!address } });
   const { data: reinsuranceBps }                            = useReadContract({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'reinsuranceYieldBps', query: { enabled: mounted } });
 
-  // ── WETH reads ────────────────────────────────────────────────────────────
   const { data: wethBalance,   refetch: refetchWETH       } = useReadContract({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'balanceOf',  args: address ? [address] : undefined, query: { enabled: mounted && isConnected && !!address } });
   const { data: wethAllowance, refetch: refetchAllowance  } = useReadContract({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'allowance',  args: address ? [address, CONTRACTS.VAULT] : undefined, query: { enabled: mounted && isConnected && !!address } });
   const { data: poolAllowance, refetch: refetchPoolAllowance } = useReadContract({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'allowance', args: address ? [address, CONTRACTS.REINSURANCE_POOL] : undefined, query: { enabled: mounted && isConnected && !!address } });
 
-  // ── Pool reads ────────────────────────────────────────────────────────────
   const { data: poolTotalAssets,   refetch: refetchPoolMetrics } = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'totalAssets',       query: { enabled: mounted } });
   const { data: poolTotalDrawn }   = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'totalDrawn',        query: { enabled: mounted } });
   const { data: poolAccruedYield } = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'accruedYield',      query: { enabled: mounted } });
@@ -512,7 +512,6 @@ export default function LiquidityPool() {
   const { data: poolShares,  refetch: refetchPoolShares } = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'balanceOf', args: address ? [address] : undefined, query: { enabled: mounted && isConnected && !!address } });
   const { data: poolTotalSupply } = useReadContract({ address: CONTRACTS.REINSURANCE_POOL, abi: REINSURANCE_POOL_ABI, functionName: 'totalSupply', query: { enabled: mounted } });
 
-  // ── Vault write contracts ─────────────────────────────────────────────────
   const { writeContract: wrapETH,  data: wrapHash    } = useWriteContract();
   const { writeContract: approve,  data: approveHash  } = useWriteContract();
   const { writeContract: deposit,  data: depositHash,  error: depositError  } = useWriteContract();
@@ -523,7 +522,6 @@ export default function LiquidityPool() {
   const { isLoading: isDepositPending,  isSuccess: isDepositSuccess  } = useWaitForTransactionReceipt({ hash: depositHash  });
   const { isLoading: isWithdrawPending, isSuccess: isWithdrawSuccess } = useWaitForTransactionReceipt({ hash: withdrawHash });
 
-  // ── Pool write contracts ──────────────────────────────────────────────────
   const { writeContract: wrapPool,    data: wrapPoolHash                        } = useWriteContract();
   const { writeContract: approvePool, data: approvePoolHash  } = useWriteContract();
   const { writeContract: depositPool,   data: depositPoolHash,  error: depositPoolError  } = useWriteContract();
@@ -534,7 +532,6 @@ export default function LiquidityPool() {
   const { isLoading: isDepositPoolPending, isSuccess: isDepositPoolSuccess } = useWaitForTransactionReceipt({ hash: depositPoolHash });
   const { isLoading: isWithdrawPoolPending, isSuccess: isWithdrawPoolSuccess } = useWaitForTransactionReceipt({ hash: withdrawPoolHash });
 
-  // ── Approval checks ───────────────────────────────────────────────────────
   useEffect(() => {
     if (depositAmount && wethAllowance !== undefined) {
       try { setNeedsApproval(parseEther(depositAmount) > (wethAllowance as bigint)); } catch { /* skip */ }
@@ -547,7 +544,6 @@ export default function LiquidityPool() {
     }
   }, [poolDepositAmount, poolAllowance]);
 
-  // ── Refetch after tx ──────────────────────────────────────────────────────
   useEffect(() => {
     if (isWrapSuccess || isApproveSuccess || isDepositSuccess || isWithdrawSuccess) {
       setTimeout(() => { refetchMetrics(); refetchLPBalance(); refetchWETH(); refetchAllowance(); }, 2000);
@@ -560,7 +556,6 @@ export default function LiquidityPool() {
     }
   }, [isWrapPoolSuccess, isApprovePoolSuccess, isDepositPoolSuccess, isWithdrawPoolSuccess, refetchPoolMetrics, refetchPoolShares, refetchWETH, refetchPoolAllowance]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleWrapETH   = () => { if (!depositAmount) return; wrapETH({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'deposit', value: parseEther(depositAmount) }); };
   const handleApprove   = () => { if (!depositAmount) return; approve({ address: CONTRACTS.WETH, abi: WETH_ABI, functionName: 'approve', args: [CONTRACTS.VAULT, parseEther(depositAmount)] }); };
   const handleDeposit   = () => { if (!depositAmount || !address) return; deposit({ address: CONTRACTS.VAULT, abi: VAULT_ABI, functionName: 'deposit', args: [parseEther(depositAmount), address] }); setDepositAmount(''); };
@@ -585,7 +580,6 @@ export default function LiquidityPool() {
     );
   }
 
-  // ── Parse vault metrics (8-field struct) ──────────────────────────────────
   const m = metricsData as { tvl: bigint; locked: bigint; available: bigint; utilizationBps: bigint; premiumsEarned: bigint; totalPayouts: bigint; netPnL: bigint; reinsuranceReceived: bigint } | undefined;
   const tvl               = m?.tvl               ?? BigInt(0);
   const locked            = m?.locked            ?? BigInt(0);
@@ -597,17 +591,14 @@ export default function LiquidityPool() {
   const reinsuranceRcvd   = m?.reinsuranceReceived ?? BigInt(0);
   const netPositive       = netPnL >= BigInt(0);
 
-  // ── Pool utilization (drawn / totalAssets) ────────────────────────────────
   const poolDrawnNum  = Number(poolTotalDrawn  ?? BigInt(0));
   const poolAssetsNum = Number(poolTotalAssets ?? BigInt(0));
   const poolUtilBps   = poolAssetsNum > 0 ? Math.round((poolDrawnNum / poolAssetsNum) * 10000) : 0;
 
-  // ── Pool share of TVL ─────────────────────────────────────────────────────
   const poolSharePct = poolTotalSupply !== undefined && (poolTotalSupply as bigint) > BigInt(0) && poolShares !== undefined
     ? ((Number(poolShares as bigint) / Number(poolTotalSupply as bigint)) * 100).toFixed(2)
     : '0.00';
 
-  // ── Tab nav ───────────────────────────────────────────────────────────────
   const tabStyle = (active: boolean): CSSProperties => ({
     padding: '0.65rem 1.5rem',
     background: active ? T.green : 'transparent',
@@ -616,25 +607,22 @@ export default function LiquidityPool() {
     fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase',
     fontFamily: "'DM Mono', monospace", fontWeight: 700,
     cursor: 'pointer', transition: 'background 0.18s, color 0.18s',
+    whiteSpace: 'nowrap',
   });
 
   return (
     <div style={css.root}>
       <style>{RESPONSIVE}</style>
 
-      {/* ── Tab switcher ─────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: '1.25rem', display: 'flex', gap: 1, background: T.border }}>
+      {/* FIX: .lp-tab-nav class applies flex-wrap so buttons stack on mobile */}
+      <div className="lp-tab-nav" style={{ marginBottom: '1.25rem' }}>
         <button style={tabStyle(activeTab === 'overview')}     onClick={() => setActiveTab('overview')}>Pool overview</button>
         <button style={tabStyle(activeTab === 'reinsurance')}  onClick={() => setActiveTab('reinsurance')}>Reinsurance pool</button>
         <button style={tabStyle(activeTab === 'risk')}         onClick={() => setActiveTab('risk')}>Risk dashboard</button>
       </div>
 
-      {/* ════════════════════════════════════════════════════════════════════
-          OVERVIEW TAB
-      ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'overview' && (
         <>
-          {/* Pool metrics */}
           <div style={css.wrap}>
             <div style={css.topBar} />
             <div style={css.header}>
@@ -682,7 +670,6 @@ export default function LiquidityPool() {
               </div>
             </div>
 
-            {/* Reinsurance pool badge */}
             <ReinsurancePoolBadge
               reinsuranceBps={reinsuranceBps as bigint | undefined}
               poolCapacity={poolCapacity as bigint | undefined}
@@ -691,7 +678,6 @@ export default function LiquidityPool() {
             />
           </div>
 
-          {/* User position + actions */}
           <div style={css.wrap}>
             <div style={css.header}>
               <span style={css.label}>Your position</span>
@@ -756,7 +742,6 @@ export default function LiquidityPool() {
             </div>
           </div>
 
-          {/* How it works */}
           <div style={css.wrap}>
             <div style={css.header}>
               <span style={css.label}>Protocol mechanics</span>
@@ -779,12 +764,8 @@ export default function LiquidityPool() {
         </>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════════
-          REINSURANCE POOL TAB
-      ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'reinsurance' && (
         <>
-          {/* Pool metrics */}
           <div style={css.wrapTeal}>
             <div style={css.tealTopBar} />
             <div style={css.headerTeal}>
@@ -810,7 +791,6 @@ export default function LiquidityPool() {
               ))}
             </div>
 
-            {/* Pool utilization bar */}
             <div style={{ padding: '1.25rem 2rem', borderTop: `1px solid ${T.tealBorder}`, background: T.tealLight }}>
               <UtilizationBar bps={poolUtilBps} color={T.teal} />
             </div>
@@ -837,7 +817,6 @@ export default function LiquidityPool() {
             </div>
           </div>
 
-          {/* Your pool position */}
           <div style={css.wrapTeal}>
             <div style={css.headerTeal}>
               <span style={css.labelTeal}>Your position</span>
@@ -906,7 +885,6 @@ export default function LiquidityPool() {
             </div>
           </div>
 
-          {/* How reinsurance works */}
           <div style={css.wrapTeal}>
             <div style={css.headerTeal}>
               <span style={css.labelTeal}>Mechanics</span>
@@ -929,9 +907,6 @@ export default function LiquidityPool() {
         </>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════════
-          RISK DASHBOARD TAB
-      ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'risk' && (
         <RiskDashboard tvl={tvl} utilizationBps={utilization} />
       )}

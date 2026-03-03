@@ -286,6 +286,24 @@ export default function LandingPage({ onStart }: LandingPageProps) {
           </div>
         </section>
 
+                {/* CANVA VIDEO EMBED */}
+        <section style={{ background: "#1c2b1e", padding: "4rem 2.5rem" }}>
+          <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+            <Reveal>
+              <span style={{ ...S.label, color: "rgba(201,145,61,0.8)" }}>Protocol Overview</span>
+              <div style={{ position: "relative", width: "100%", height: 0, paddingTop: "56.25%", boxShadow: "0 2px 8px 0 rgba(0,0,0,0.4)", overflow: "hidden", borderRadius: "4px" }}>
+                <iframe
+                  loading="lazy"
+                  style={{ position: "absolute", width: "100%", height: "100%", top: 0, left: 0, border: "none", padding: 0, margin: 0 }}
+                  src="https://player.vimeo.com/video/1169690007?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+                  allowFullScreen
+                  allow="fullscreen"
+                />
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
         {/* ORIGIN STORY */}
         <section style={{ ...S.originSection }} className="lp-section">
           <div className="lp-origin-grid">
